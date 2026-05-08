@@ -17,7 +17,7 @@ export const RestaurantCreatePage = () => {
     // Fetch packages for the dropdown
     const { data: packagesData, isLoading: packagesLoading } = usePackages({
         per_page: 100, // fetch all active packages
-        is_active: '1', // only active packages
+        is_active: true, // only active packages
     });
 
     const packages = packagesData?.data || [];
