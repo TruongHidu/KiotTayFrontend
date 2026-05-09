@@ -33,7 +33,7 @@ export interface UpdatePackageRequest {
 }
 
 export interface PackageListParams {
-    is_active?: boolean;
+    is_active?: boolean | string | number;
     search?: string;
     per_page?: number;
     page?: number;

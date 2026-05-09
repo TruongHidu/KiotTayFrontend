@@ -4,3 +4,4 @@ export * from './feature';
 export * from './package';
 export * from './subscription';
 export * from './api';
+export * from './menu';

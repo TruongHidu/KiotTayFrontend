@@ -38,6 +38,10 @@ import { TenantDashboard } from '@/tenant/pages/TenantDashboard';
 // Public Menu Zone
 import { MenuPage } from '@/public-menu/features/menu/pages/MenuPage';
 
+import { MenuManagementPage } from '@/tenant/features/menu/pages/MenuManagementPage';
+import { FeatureGuard } from '@/auth/components/FeatureGuard';
+import { FeatureCode } from '@/types';
+
 export const router = createBrowserRouter([
     {
         path: '/login',
@@ -105,11 +109,19 @@ export const router = createBrowserRouter([
             },
             {
                 path: 'menu',
-                element: <div>Trang quản lý thực đơn (Coming soon)</div>,
+                element: (
+                    <FeatureGuard feature={FeatureCode.MENU_MANAGEMENT} fallback={<UnauthorizedPage />}>
+                        <MenuManagementPage />
+                    </FeatureGuard>
+                ),
             },
             {
                 path: 'tables',
-                element: <div>Trang quản lý bàn & QR (Coming soon)</div>,
+                element: (
+                    <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
+                        <div>Trang quản lý bàn & QR (Coming soon)</div>
+                    </FeatureGuard>
+                ),
             },
             {
                 path: 'orders',

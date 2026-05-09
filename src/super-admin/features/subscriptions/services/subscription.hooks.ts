@@ -41,7 +41,7 @@ export const useCancelSubscription = () => {
     return useMutation({
         mutationFn: (subscriptionId: string) =>
             subscriptionService.cancelSubscription(subscriptionId),
-        onSuccess: (_data, _variables) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [subscriptionQueryKey] });
             queryClient.invalidateQueries({ queryKey: ['restaurants'] });
         },

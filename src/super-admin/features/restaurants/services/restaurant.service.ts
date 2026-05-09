@@ -25,7 +25,7 @@ export const restaurantService = {
     // Onboard (Create)
     createRestaurant: (data: RestaurantOnboardRequest) =>
         apiClient
-            .post<{ restaurant: Restaurant; subscription: any; owner: any }>('/admin/restaurants/onboard', data)
+            .post<{ restaurant: Restaurant; subscription: unknown; owner: unknown }>('/admin/restaurants/onboard', data)
             .then((res) => res.data),
 
     // Update

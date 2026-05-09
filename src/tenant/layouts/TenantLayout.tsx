@@ -13,6 +13,8 @@ import {
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth.store';
 import { useLogout } from '@/auth/services/auth.hooks';
+import { useFeatureFlag } from '@/auth/hooks/useFeatureFlag';
+import { FeatureCode } from '@/types';
 import type { MenuProps } from 'antd';
 
 const { Header, Sider, Content } = Layout;
@@ -23,6 +25,9 @@ export const TenantLayout = () => {
     const user = useAuthStore((state) => state.user);
     const { mutate: logout } = useLogout();
 
+    const hasMenuManagement = useFeatureFlag(FeatureCode.MENU_MANAGEMENT);
+    const hasTableManagement = useFeatureFlag(FeatureCode.TABLE_MANAGEMENT);
+
     const menuItems: MenuProps['items'] = [
         {
             key: '/portal',
@@ -30,31 +35,31 @@ export const TenantLayout = () => {
             label: 'Tổng quan',
             onClick: () => navigate('/portal'),
         },
-        {
+        hasMenuManagement ? {
             key: '/portal/menu',
             icon: <ShopOutlined />,
             label: 'Thực đơn',
             onClick: () => navigate('/portal/menu'),
-        },
+        } : null,
         {
             key: '/portal/orders',
             icon: <OrderedListOutlined />,
             label: 'Đơn hàng',
             onClick: () => navigate('/portal/orders'),
         },
-        {
+        hasTableManagement ? {
             key: '/portal/tables',
             icon: <QrcodeOutlined />,
             label: 'Bàn & QR',
             onClick: () => navigate('/portal/tables'),
-        },
+        } : null,
         {
             key: '/portal/settings',
             icon: <SettingOutlined />,
             label: 'Cài đặt',
             onClick: () => navigate('/portal/settings'),
         },
-    ];
+    ].filter(Boolean) as MenuProps['items'];
 
     const userMenuItems: MenuProps['items'] = [
         {

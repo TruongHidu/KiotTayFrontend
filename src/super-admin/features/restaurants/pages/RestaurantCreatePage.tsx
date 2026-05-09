@@ -12,64 +12,61 @@ const { Title, Text } = Typography;
 export const RestaurantCreatePage = () => {
     const navigate = useNavigate();
     const [form] = Form.useForm();
-    const { mutate: createRestaurant, isPending } = useCreateRestaurant();
+    const { mutateAsync: createRestaurantAsync, isPending } = useCreateRestaurant();
     
     // Fetch packages for the dropdown
     const { data: packagesData, isLoading: packagesLoading } = usePackages({
         per_page: 100, // fetch all active packages
-        is_active: '1', // only active packages
+        is_active: 1, // only active packages
     });
 
     const packages = packagesData?.data || [];
 
-    const handleSubmit = (values: any) => {
+    const handleSubmit = async (values: Record<string, unknown>) => {
         // Format the data to match RestaurantOnboardRequest
         const payload: RestaurantOnboardRequest = {
             restaurant: {
-                name: values.restaurant_name,
-                address: values.restaurant_address,
-                phone: values.restaurant_phone,
+                name: values.restaurant_name as string,
+                address: values.restaurant_address as string,
+                phone: values.restaurant_phone as string,
             },
-            package_id: values.package_id,
+            package_id: values.package_id as string,
             owner: {
-                name: values.owner_name,
-                email: values.owner_email,
-                password: values.owner_password,
+                name: values.owner_name as string,
+                email: values.owner_email as string,
+                password: values.owner_password as string,
                 is_active: true,
             }
         };
 
-        createRestaurant(payload, {
-            onSuccess: () => {
-                message.success('Đăng ký nhà hàng và cấp phát gói thành công');
-                navigate('/super-admin/restaurants');
-            },
-            onError: (error) => {
-                const fieldErrors = getFieldErrors(error);
-                if (fieldErrors) {
-                    // Map nested errors to flat form field names if necessary
-                    // For example, "restaurant.name" -> "restaurant_name"
-                    const errorFields = Object.entries(fieldErrors).map(([field, errors]) => {
-                        let formField = field;
-                        if (field === 'restaurant.name') formField = 'restaurant_name';
-                        if (field === 'restaurant.address') formField = 'restaurant_address';
-                        if (field === 'restaurant.phone') formField = 'restaurant_phone';
-                        if (field === 'owner.name') formField = 'owner_name';
-                        if (field === 'owner.email') formField = 'owner_email';
-                        if (field === 'owner.password') formField = 'owner_password';
-                        if (field === 'package_id') formField = 'package_id';
-                        
-                        return {
-                            name: formField,
-                            errors: errors,
-                        };
-                    });
-                    form.setFields(errorFields);
-                } else {
-                    message.error(getErrorMessage(error));
-                }
-            },
-        });
+        try {
+            await createRestaurantAsync(payload);
+            message.success('Đăng ký nhà hàng và cấp phát gói thành công');
+            window.location.href = '/super-admin/restaurants';
+        } catch (error: any) {
+            const fieldErrors = getFieldErrors(error);
+            if (fieldErrors) {
+                // Map nested errors to flat form field names if necessary
+                const errorFields = Object.entries(fieldErrors).map(([field, errors]) => {
+                    let formField = field;
+                    if (field === 'restaurant.name') formField = 'restaurant_name';
+                    if (field === 'restaurant.address') formField = 'restaurant_address';
+                    if (field === 'restaurant.phone') formField = 'restaurant_phone';
+                    if (field === 'owner.name') formField = 'owner_name';
+                    if (field === 'owner.email') formField = 'owner_email';
+                    if (field === 'owner.password') formField = 'owner_password';
+                    if (field === 'package_id') formField = 'package_id';
+                    
+                    return {
+                        name: formField,
+                        errors: errors,
+                    };
+                });
+                form.setFields(errorFields);
+            } else {
+                message.error(getErrorMessage(error));
+            }
+        }
     };
 
     return (
@@ -213,7 +210,7 @@ export const RestaurantCreatePage = () => {
                                         block
                                         className="mt-2"
                                     >
-                                        Hủy Bỏ
+                                        Quay Lại Danh Sách
                                     </Button>
                                 </div>
                             </div>
