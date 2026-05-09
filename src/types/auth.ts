@@ -12,6 +12,7 @@ export interface User {
     role_label: string;
     is_active: boolean;
     restaurant_id: string | null;
+    features: string[]; // List of active feature codes based on subscription
     last_login_at: string | null;
     created_at: string | null;
 }
@@ -31,4 +32,4 @@ export interface LogoutResponse {
     message: string;
 }
 
-export interface AuthMeResponse extends User { }
+export type AuthMeResponse = User;

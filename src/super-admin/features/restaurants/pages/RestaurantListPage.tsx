@@ -39,6 +39,7 @@ export const RestaurantListPage = () => {
     const pagination = data?.meta ?? undefined;
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPage(1);
     }, [debouncedSearch, status, perPage]);
 
