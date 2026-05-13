@@ -37,6 +37,8 @@ import { TenantDashboard } from '@/tenant/pages/TenantDashboard';
 
 // Public Menu Zone
 import { MenuPage } from '@/public-menu/features/menu/pages/MenuPage';
+import { CartPage } from '@/public-menu/features/cart/pages/CartPage';
+import { OrderSuccessPage } from '@/public-menu/features/orders/pages/OrderSuccessPage';
 
 import { MenuManagementPage } from '@/tenant/features/menu/pages/MenuManagementPage';
 import { FeatureGuard } from '@/auth/components/FeatureGuard';
@@ -146,6 +148,14 @@ export const router = createBrowserRouter([
             {
                 path: ':tableId',
                 element: <MenuPage />
+            },
+            {
+                path: 'cart',
+                element: <CartPage />
+            },
+            {
+                path: 'success/:orderId',
+                element: <OrderSuccessPage />
             }
         ]
     },

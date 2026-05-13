@@ -1,53 +1,100 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Typography, Button } from 'antd';
-import { SearchOutlined, PlusOutlined } from '@ant-design/icons';
-import { formatCurrency } from '@/lib/formatters';
+import { SearchOutlined } from '@ant-design/icons';
+import { MenuItemCard } from '../components/MenuItemCard';
+import { FloatingCartButton } from '../components/FloatingCartButton';
+import { useCartStore } from '../../../store/useCartStore';
 
 const { Title, Text } = Typography;
 
-const MOCK_CATEGORIES = ['Nổi bật', 'Món chính', 'Đồ uống', 'Tráng miệng', 'Ăn vặt'];
-const MOCK_ITEMS = [
+// Mock Data grouped by Category
+const MOCK_MENU_DATA = [
     {
-        id: 1,
-        name: 'Phở Bò Đặc Biệt',
-        description: 'Tái, nạm, gầu, gân, bò viên, trứng trần',
-        price: 65000,
-        image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500&q=80',
-        popular: true,
+        category: 'Nổi bật',
+        items: [
+            { id: 1, name: 'Phở Bò Đặc Biệt', description: 'Tái, nạm, gầu, gân, bò viên', price: 65000, image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500&q=80', popular: true, status: 'AVAILABLE' },
+            { id: 5, name: 'Trà Đá', description: 'Trà đá mát lạnh', price: 5000, image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=500&q=80', popular: true, status: 'OUT_OF_STOCK' },
+        ]
     },
     {
-        id: 2,
-        name: 'Bún Chả Hà Nội',
-        description: 'Chả băm, chả miếng nướng than hoa',
-        price: 55000,
-        image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80',
-        popular: false,
+        category: 'Món chính',
+        items: [
+            { id: 2, name: 'Bún Chả Hà Nội', description: 'Chả băm, chả miếng nướng than hoa', price: 55000, image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80', popular: false, status: 'AVAILABLE' },
+            { id: 6, name: 'Cơm Tấm Sườn Bì Chả', description: 'Cơm tấm dẻo, sườn nướng mỡ hành', price: 60000, image: 'https://images.unsplash.com/photo-1626804475297-4160cb2586cd?w=500&q=80', popular: false, status: 'AVAILABLE' },
+        ]
     },
     {
-        id: 3,
-        name: 'Gỏi Cuốn Tôm Thịt',
-        description: 'Tôm tươi, thịt luộc, bún, rau thơm, tương đậu phộng',
-        price: 30000,
-        image: 'https://images.unsplash.com/photo-1536590158209-e9d615d525e4?w=500&q=80',
-        popular: true,
+        category: 'Ăn vặt',
+        items: [
+            { id: 3, name: 'Gỏi Cuốn Tôm Thịt', description: 'Tôm tươi, thịt luộc, bún, rau thơm', price: 30000, image: 'https://images.unsplash.com/photo-1536590158209-e9d615d525e4?w=500&q=80', popular: true, status: 'AVAILABLE' },
+        ]
     },
     {
-        id: 4,
-        name: 'Trà Sen Vàng',
-        description: 'Trà ô long, hạt sen, củ năng, kem macchiato',
-        price: 45000,
-        image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=500&q=80',
-        popular: false,
+        category: 'Đồ uống',
+        items: [
+            { id: 4, name: 'Trà Sen Vàng', description: 'Trà ô long, hạt sen, củ năng', price: 45000, image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=500&q=80', popular: false, status: 'AVAILABLE' },
+        ]
     }
 ];
 
 export const MenuPage = () => {
-    const { tableId } = useParams();
+    const { tableId, restaurantSlug } = useParams();
     const [activeCat, setActiveCat] = useState(0);
+    const categoryRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const setRestaurantInfo = useCartStore((state) => state.setRestaurantInfo);
+
+    useEffect(() => {
+        if (restaurantSlug) {
+            setRestaurantInfo(restaurantSlug, tableId);
+        }
+    }, [restaurantSlug, tableId, setRestaurantInfo]);
+
+    // Scroll-Spy Logic
+    useEffect(() => {
+        const observerOptions = {
+            root: null,
+            rootMargin: '-100px 0px -60% 0px',
+            threshold: 0
+        };
+
+        const observerCallback: IntersectionObserverCallback = (entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const index = categoryRefs.current.findIndex(ref => ref === entry.target);
+                    if (index !== -1) {
+                        setActiveCat(index);
+                        // Auto-scroll the horizontal category nav
+                        const navItem = document.getElementById(`nav-cat-${index}`);
+                        if (navItem) {
+                            navItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                        }
+                    }
+                }
+            });
+        };
+
+        const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+        categoryRefs.current.forEach(ref => {
+            if (ref) observer.observe(ref);
+        });
+
+        return () => observer.disconnect();
+    }, []);
+
+    const scrollToCategory = (index: number) => {
+        setActiveCat(index);
+        const yOffset = -90; // offset for sticky header
+        const element = categoryRefs.current[index];
+        if (element) {
+            const y = element.getBoundingClientRect().top + window.scrollY + yOffset;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+        }
+    };
 
     return (
-        <div className="flex flex-col gap-6 animate-fade-in pb-10">
+        <div className="flex flex-col gap-6 animate-fade-in pb-24">
             {/* Banner Section */}
             <div className="relative h-48 -mx-4 -mt-4 mb-2 overflow-hidden bg-gray-900">
                 <img 
@@ -78,55 +125,44 @@ export const MenuPage = () => {
                 <Button shape="circle" icon={<SearchOutlined />} size="large" className="bg-gray-50 border-none hover:bg-orange-50 hover:text-orange-600" />
             </div>
 
-            {/* Sticky Categories */}
-            <div className="sticky top-[64px] z-40 bg-gray-50/90 backdrop-blur-md -mx-4 px-4 py-3 border-b border-gray-200">
+            {/* Sticky Categories Navigation */}
+            <div className="sticky top-[0px] z-40 bg-gray-50/90 backdrop-blur-md -mx-4 px-4 py-3 border-b border-gray-200">
                 <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                    {MOCK_CATEGORIES.map((cat, idx) => (
+                    {MOCK_MENU_DATA.map((group, idx) => (
                         <div 
                             key={idx}
-                            onClick={() => setActiveCat(idx)}
-                            className={`px-5 py-2 rounded-full whitespace-nowrap font-medium text-sm transition-all cursor-pointer shadow-sm
+                            id={`nav-cat-${idx}`}
+                            onClick={() => scrollToCategory(idx)}
+                            className={`px-5 py-2 rounded-full whitespace-nowrap font-medium text-sm transition-all cursor-pointer shadow-sm select-none
                                 ${activeCat === idx 
                                     ? 'bg-orange-500 text-white font-bold transform scale-105' 
                                     : 'bg-white text-gray-600 border border-gray-200 hover:border-orange-300'}`}
                         >
-                            {cat}
+                            {group.category}
                         </div>
                     ))}
                 </div>
             </div>
 
             {/* Menu Items List */}
-            <div className="flex flex-col gap-5 px-4 md:px-0">
-                <Title level={4} className="!m-0 text-gray-800">{MOCK_CATEGORIES[activeCat]}</Title>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {MOCK_ITEMS.map((item) => (
-                        <div key={item.id} className="bg-white rounded-2xl p-3 flex gap-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                            <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 relative bg-gray-100">
-                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                {item.popular && (
-                                    <div className="absolute top-0 left-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-lg">
-                                        HOT
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 flex flex-col justify-between py-1">
-                                <div>
-                                    <div className="font-bold text-gray-800 text-base leading-tight mb-1">{item.name}</div>
-                                    <div className="text-gray-500 text-xs line-clamp-2">{item.description}</div>
-                                </div>
-                                <div className="flex items-center justify-between mt-2">
-                                    <div className="font-bold text-orange-600 text-base">{formatCurrency(item.price)}</div>
-                                    <button className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center hover:bg-orange-500 hover:text-white transition-colors">
-                                        <PlusOutlined />
-                                    </button>
-                                </div>
-                            </div>
+            <div className="flex flex-col gap-8 px-4 md:px-0">
+                {MOCK_MENU_DATA.map((group, groupIdx) => (
+                    <div 
+                        key={groupIdx} 
+                        ref={(el) => { categoryRefs.current[groupIdx] = el; }}
+                        className="scroll-mt-[100px]"
+                    >
+                        <Title level={4} className="!m-0 text-gray-800 mb-4">{group.category}</Title>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {group.items.map((item) => (
+                                <MenuItemCard key={item.id} item={item} />
+                            ))}
                         </div>
-                    ))}
-                </div>
+                    </div>
+                ))}
             </div>
+
+            <FloatingCartButton />
         </div>
     );
 };
