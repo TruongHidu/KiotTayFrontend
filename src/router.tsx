@@ -37,6 +37,7 @@ import { TenantDashboard } from '@/tenant/pages/TenantDashboard';
 
 // Public Menu Zone
 import { MenuPage } from '@/public-menu/features/menu/pages/MenuPage';
+import { OrderTrackingPage } from '@/public-menu/features/menu/pages/OrderTrackingPage';
 
 import { MenuManagementPage } from '@/tenant/features/menu/pages/MenuManagementPage';
 import { FeatureGuard } from '@/auth/components/FeatureGuard';
@@ -136,18 +137,29 @@ export const router = createBrowserRouter([
 
     // --- PUBLIC MENU ZONE ---
     {
-        path: '/menu/:restaurantSlug',
+        path: '/menu',
         element: <MenuLayout />,
         children: [
             {
+                // /menu?public_token=xxx&type=qr_static|qr_table
                 index: true,
-                element: <MenuPage />
+                element: <MenuPage />,
             },
             {
-                path: ':tableId',
-                element: <MenuPage />
-            }
-        ]
+                // /menu/order-tracking/:orderId?public_token=xxx
+                path: 'order-tracking/:orderId',
+                element: <OrderTrackingPage />,
+            },
+        ],
+    },
+    // Legacy slug-based route kept for backward compat
+    {
+        path: '/menu/:restaurantSlug',
+        element: <MenuLayout />,
+        children: [
+            { index: true, element: <MenuPage /> },
+            { path: ':tableId', element: <MenuPage /> },
+        ],
     },
 
     // --- LANDING PAGE ---
