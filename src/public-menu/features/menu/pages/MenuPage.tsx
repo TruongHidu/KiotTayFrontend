@@ -1,132 +1,285 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Typography, Button } from 'antd';
-import { SearchOutlined, PlusOutlined } from '@ant-design/icons';
-import { formatCurrency } from '@/lib/formatters';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, X } from 'lucide-react';
 
-const { Title, Text } = Typography;
+import { fetchPublicMenu, placeOrder, fetchOrderStatus, addOrderItems } from '../services/menuService';
+import { useCartStore } from '@/store/cartStore';
+import type { PublicItem, PublicMenuResponse, QrType } from '@/types/public-menu';
 
-const MOCK_CATEGORIES = ['Nổi bật', 'Món chính', 'Đồ uống', 'Tráng miệng', 'Ăn vặt'];
-const MOCK_ITEMS = [
-    {
-        id: 1,
-        name: 'Phở Bò Đặc Biệt',
-        description: 'Tái, nạm, gầu, gân, bò viên, trứng trần',
-        price: 65000,
-        image: 'https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500&q=80',
-        popular: true,
-    },
-    {
-        id: 2,
-        name: 'Bún Chả Hà Nội',
-        description: 'Chả băm, chả miếng nướng than hoa',
-        price: 55000,
-        image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&q=80',
-        popular: false,
-    },
-    {
-        id: 3,
-        name: 'Gỏi Cuốn Tôm Thịt',
-        description: 'Tôm tươi, thịt luộc, bún, rau thơm, tương đậu phộng',
-        price: 30000,
-        image: 'https://images.unsplash.com/photo-1536590158209-e9d615d525e4?w=500&q=80',
-        popular: true,
-    },
-    {
-        id: 4,
-        name: 'Trà Sen Vàng',
-        description: 'Trà ô long, hạt sen, củ năng, kem macchiato',
-        price: 45000,
-        image: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=500&q=80',
-        popular: false,
-    }
-];
+import { SplashScreen, MenuItemSkeleton } from '../components/SplashScreen';
+import { CategoryNav } from '../components/CategoryNav';
+import { MenuItemCard } from '../components/MenuItemCard';
+import { AddToCartModal } from '../components/AddToCartModal';
+import { CartSheet } from '../components/CartSheet';
+import { FloatingCartBar } from '../components/FloatingCartBar';
 
 export const MenuPage = () => {
-    const { tableId } = useParams();
-    const [activeCat, setActiveCat] = useState(0);
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+
+    const public_token = searchParams.get('public_token') || '';
+    const qrType = (searchParams.get('type') || 'qr_static') as QrType;
+    const isAddingToOrder = searchParams.get('action') === 'add_items';
+
+    const [menuData, setMenuData] = useState<PublicMenuResponse | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+    const [selectedItem, setSelectedItem] = useState<PublicItem | null>(null);
+    const [cartOpen, setCartOpen] = useState(false);
+    const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+    const { items: cartItems, clearCart, setRestaurantId } = useCartStore();
+
+    // ---- Load menu ----
+    useEffect(() => {
+        if (!public_token) {
+            setError('Mã QR không hợp lệ. Vui lòng quét lại.');
+            setLoading(false);
+            return;
+        }
+
+        const load = async () => {
+            // Anti-spam check: Only 1 active order per device
+            const activeOrderId = localStorage.getItem('active_order_id');
+            if (activeOrderId && !isAddingToOrder) {
+                try {
+                    const activeOrder = await fetchOrderStatus(activeOrderId);
+                    const isActive = activeOrder.status === 'open' || activeOrder.status === 'cooking';
+                    if (isActive) {
+                        // Save latest data to localStorage before redirecting
+                        localStorage.setItem('active_order_data', JSON.stringify(activeOrder));
+                        navigate(`/menu/order-tracking/${activeOrderId}?public_token=${public_token}`);
+                        return; // Stop loading menu
+                    } else {
+                        // Order is terminal (served/paid/cancelled), clear everything
+                        localStorage.removeItem('active_order_id');
+                        localStorage.removeItem('active_order_data');
+                    }
+                } catch {
+                    // API error (e.g. 404), clear stale data
+                    localStorage.removeItem('active_order_id');
+                    localStorage.removeItem('active_order_data');
+                }
+            }
+
+            try {
+                const data = await fetchPublicMenu(public_token, qrType);
+                setMenuData(data);
+                if (data.restaurant) {
+                    setRestaurantId(data.restaurant.id);
+                }
+                // Do not set activeGroupId here so all items are shown by default
+            } catch {
+                setError('Không thể tải thực đơn. Vui lòng thử lại.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        // Minimum splash time for UX
+        const minSplash = new Promise((resolve) => setTimeout(resolve, 1200));
+        Promise.all([load(), minSplash]).then(() => setLoading(false));
+    }, [public_token, qrType, setRestaurantId]);
+
+    // ---- Filter toggle ----
+    const handleCategorySelect = useCallback((groupId: string) => {
+        setActiveGroupId((prev) => (prev === groupId ? null : groupId));
+        // Scroll slightly down to focus on the menu list
+        window.scrollTo({ top: 180, behavior: 'smooth' });
+    }, []);
+
+    // ---- Place order ----
+    const handlePlaceOrder = async (customerName: string, customerPhone: string, note: string) => {
+        if (!menuData || cartItems.length === 0) return;
+        setIsPlacingOrder(true);
+        try {
+            const activeOrderId = localStorage.getItem('active_order_id');
+            let orderId = '';
+
+            if (isAddingToOrder && activeOrderId) {
+                const order = await addOrderItems(activeOrderId, {
+                    items: cartItems.map((i) => ({
+                        item_id: i.item_id,
+                        quantity: i.quantity,
+                        note: i.note,
+                    })),
+                });
+                orderId = order.id;
+            } else {
+                const order = await placeOrder({
+                    public_token,
+                    source_channel: qrType,
+                    customer_name: customerName || undefined,
+                    customer_phone: customerPhone || undefined,
+                    note: note || undefined,
+                    items: cartItems.map((i) => ({
+                        item_id: i.item_id,
+                        quantity: i.quantity,
+                        note: i.note,
+                    })),
+                });
+                orderId = order.id;
+                localStorage.setItem('active_order_id', order.id);
+            }
+
+            clearCart();
+            setCartOpen(false);
+            navigate(`/menu/order-tracking/${orderId}?public_token=${public_token}`);
+        } catch {
+            alert('Không thể gửi đơn. Vui lòng thử lại.');
+        } finally {
+            setIsPlacingOrder(false);
+        }
+    };
+
+    // ---- States ----
+    if (loading) return <SplashScreen name={menuData?.restaurant?.name} />;
+
+    if (error) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center text-center p-8 bg-gray-50">
+                <span className="text-6xl mb-4">😕</span>
+                <h2 className="text-xl font-bold text-gray-700 mb-2">Ôi, có lỗi xảy ra!</h2>
+                <p className="text-gray-500 text-sm">{error}</p>
+            </div>
+        );
+    }
+
+    if (!menuData) return null;
+
+    const { restaurant, item_groups } = menuData;
 
     return (
-        <div className="flex flex-col gap-6 animate-fade-in pb-10">
-            {/* Banner Section */}
-            <div className="relative h-48 -mx-4 -mt-4 mb-2 overflow-hidden bg-gray-900">
-                <img 
-                    src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80" 
-                    alt="Banner" 
-                    className="w-full h-full object-cover opacity-60"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 to-transparent flex flex-col justify-end p-6 text-white">
-                    <Title level={3} className="!text-white !m-0 !mb-1">Khám phá ẩm thực</Title>
-                    <Text className="text-gray-300">Những món ngon được chọn lọc kỹ càng</Text>
-                </div>
-            </div>
+        <motion.div 
+            initial={isAddingToOrder ? { y: '100%' } : { opacity: 0 }}
+            animate={isAddingToOrder ? { y: 0 } : { opacity: 1 }}
+            exit={isAddingToOrder ? { y: '100%' } : { opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className={`min-h-screen bg-gray-50 pb-32 ${isAddingToOrder ? 'fixed inset-0 z-50 overflow-y-auto' : ''}`}
+        >
+            {/* ---- Close button for Add Items mode ---- */}
+            {isAddingToOrder && (
+                <button 
+                    onClick={() => navigate(-1)}
+                    className="absolute top-4 right-4 z-50 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/60 transition-colors"
+                >
+                    <X size={20} />
+                </button>
+            )}
 
-            {/* Table Info Bar */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between -mt-10 relative z-10 mx-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
-                        <img src="/qr-scan.svg" alt="QR" className="w-6 h-6 opacity-70" onError={(e) => e.currentTarget.style.display = 'none'} />
-                        <span className="text-xl">🍽️</span>
-                    </div>
-                    <div>
-                        <Text className="text-gray-500 text-xs font-medium block uppercase tracking-wider">Vị trí của bạn</Text>
-                        <Title level={5} className="!m-0 text-orange-600 font-bold">
-                            {tableId ? `Bàn ${tableId}` : 'Khách mang đi'}
-                        </Title>
-                    </div>
-                </div>
-                <Button shape="circle" icon={<SearchOutlined />} size="large" className="bg-gray-50 border-none hover:bg-orange-50 hover:text-orange-600" />
-            </div>
+            {/* ---- Hero Banner ---- */}
+            <div className="relative h-52 overflow-hidden">
+                {restaurant?.banner_url ? (
+                    <img
+                        src={restaurant.banner_url}
+                        alt={restaurant.name}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-orange-400 via-orange-500 to-red-600" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-            {/* Sticky Categories */}
-            <div className="sticky top-[64px] z-40 bg-gray-50/90 backdrop-blur-md -mx-4 px-4 py-3 border-b border-gray-200">
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                    {MOCK_CATEGORIES.map((cat, idx) => (
-                        <div 
-                            key={idx}
-                            onClick={() => setActiveCat(idx)}
-                            className={`px-5 py-2 rounded-full whitespace-nowrap font-medium text-sm transition-all cursor-pointer shadow-sm
-                                ${activeCat === idx 
-                                    ? 'bg-orange-500 text-white font-bold transform scale-105' 
-                                    : 'bg-white text-gray-600 border border-gray-200 hover:border-orange-300'}`}
+                {/* Restaurant info overlay */}
+                <div className="absolute bottom-5 left-4 right-4 text-white">
+                    <motion.h1
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        className="text-2xl font-black tracking-tight drop-shadow-lg"
+                    >
+                        {restaurant?.name || 'Nhà hàng KiotTay'}
+                    </motion.h1>
+                    {restaurant?.address && (
+                        <motion.p
+                            initial={{ y: 15, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ delay: 0.1 }}
+                            className="text-white/80 text-sm flex items-center gap-1 mt-0.5"
                         >
-                            {cat}
-                        </div>
-                    ))}
+                            <MapPin size={12} />
+                            {restaurant.address}
+                        </motion.p>
+                    )}
                 </div>
             </div>
 
-            {/* Menu Items List */}
-            <div className="flex flex-col gap-5 px-4 md:px-0">
-                <Title level={4} className="!m-0 text-gray-800">{MOCK_CATEGORIES[activeCat]}</Title>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {MOCK_ITEMS.map((item) => (
-                        <div key={item.id} className="bg-white rounded-2xl p-3 flex gap-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                            <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0 relative bg-gray-100">
-                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                {item.popular && (
-                                    <div className="absolute top-0 left-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-lg">
-                                        HOT
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex-1 flex flex-col justify-between py-1">
-                                <div>
-                                    <div className="font-bold text-gray-800 text-base leading-tight mb-1">{item.name}</div>
-                                    <div className="text-gray-500 text-xs line-clamp-2">{item.description}</div>
-                                </div>
-                                <div className="flex items-center justify-between mt-2">
-                                    <div className="font-bold text-orange-600 text-base">{formatCurrency(item.price)}</div>
-                                    <button className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center hover:bg-orange-500 hover:text-white transition-colors">
-                                        <PlusOutlined />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+            {/* ---- Sticky Category Nav ---- */}
+            <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm py-3">
+                <CategoryNav
+                    groups={item_groups}
+                    activeGroupId={activeGroupId}
+                    onSelect={handleCategorySelect}
+                />
             </div>
-        </div>
+
+            {/* ---- Menu Groups ---- */}
+            <div className="space-y-8 pt-4 px-4">
+                {item_groups
+                    ?.filter((group) => activeGroupId === null || group.group_id === activeGroupId)
+                    .map((group) => (
+                    <div
+                        key={group.group_id}
+                        id={`group-${group.group_id}`}
+                    >
+                        {/* Group Header */}
+                        <div className="flex items-center gap-3 mb-4">
+                            <h2 className="text-lg font-black text-gray-800">{group.group_name}</h2>
+                            <div className="flex-1 h-px bg-gradient-to-r from-orange-200 to-transparent" />
+                            <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-1 rounded-full">
+                                {group.items.length} món
+                            </span>
+                        </div>
+
+                        {/* Items Grid */}
+                        <div className="grid grid-cols-1 gap-3">
+                            {group.items
+                                .map((item) => (
+                                    <MenuItemCard
+                                        key={item.id}
+                                        item={item}
+                                        onAdd={(i) => setSelectedItem(i)}
+                                    />
+                                ))}
+
+                            {group.items.length === 0 && (
+                                <p className="text-gray-400 text-sm py-4 text-center">
+                                    Không có món nào trong danh mục này
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                ))}
+
+                {/* Loading Skeleton (shown while API loads) */}
+                {loading && (
+                    <div className="space-y-3">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <MenuItemSkeleton key={i} />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ---- Modals & Sheets ---- */}
+            <AddToCartModal
+                item={selectedItem}
+                onClose={() => setSelectedItem(null)}
+            />
+
+            <CartSheet
+                open={cartOpen}
+                onClose={() => setCartOpen(false)}
+                onPlaceOrder={handlePlaceOrder}
+                isPlacingOrder={isPlacingOrder}
+                isAddingToOrder={isAddingToOrder}
+            />
+
+            <FloatingCartBar 
+                onClick={() => setCartOpen(true)} 
+            />
+        </motion.div>
     );
 };
