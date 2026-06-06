@@ -2,16 +2,19 @@ import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Clock, ChefHat, Utensils, Plus, RefreshCw } from 'lucide-react';
-import { echo } from '@/services/echo';
+import { getEcho } from '@/lib/echoClient';
 import { fetchOrderStatus } from '../services/menuService';
 import { formatCurrency } from '@/lib/formatters';
-import type { Order, OrderStatus } from '@/types/public-menu';
+import type { Order } from '@/types/public-menu';
+import type { OrderStatus } from '@/types/order';
 
+// FIX: Dùng đúng status enum từ backend (UPPERCASE)
 const ORDER_STEPS: { status: OrderStatus; label: string; icon: React.ReactNode; color: string }[] = [
-    { status: 'open', label: 'Chờ xác nhận', icon: <Clock size={20} />, color: 'text-yellow-500' },
-    { status: 'cooking', label: 'Đang nấu', icon: <ChefHat size={20} />, color: 'text-orange-500' },
-    { status: 'served', label: 'Đã phục vụ', icon: <Utensils size={20} />, color: 'text-blue-500' },
-    { status: 'paid', label: 'Đã thanh toán', icon: <CheckCircle2 size={20} />, color: 'text-green-500' },
+    { status: 'PENDING',   label: 'Chờ xác nhận', icon: <Clock size={20} />,       color: 'text-yellow-500' },
+    { status: 'CONFIRMED', label: 'Đã xác nhận',  icon: <CheckCircle2 size={20} />, color: 'text-blue-500'   },
+    { status: 'PREPARING', label: 'Đang nấu',     icon: <ChefHat size={20} />,     color: 'text-orange-500' },
+    { status: 'READY',     label: 'Sẵn sàng',     icon: <Utensils size={20} />,    color: 'text-green-500'  },
+    { status: 'COMPLETED', label: 'Hoàn thành',   icon: <CheckCircle2 size={20} />, color: 'text-emerald-600'},
 ];
 
 const getStepIndex = (status: OrderStatus): number => {
@@ -38,7 +41,8 @@ export const OrderTrackingPage = () => {
     const [loading, setLoading] = useState(order === null); // skip skeleton if we have cache
     const [lastRefreshed, setLastRefreshed] = useState(new Date());
 
-    const TERMINAL_STATUSES: OrderStatus[] = ['paid', 'cancelled'];
+    // FIX: Dùng đúng status enum UPPERCASE của backend
+    const TERMINAL_STATUSES: OrderStatus[] = ['COMPLETED', 'CANCELLED'];
 
     const clearActiveOrder = () => {
         localStorage.removeItem('active_order_id');
@@ -74,15 +78,30 @@ export const OrderTrackingPage = () => {
 
         if (!orderId) return;
 
-        // Real-time WebSocket Subscription via Laravel Echo
+        // Real-time WebSocket Subscription via Laravel Echo (dùng singleton getEcho)
         const channelName = `order.${orderId}`;
+        const echo = getEcho();
         const channel = echo.channel(channelName);
 
-        channel.listen('OrderStatusTransitioned', (e: { newStatus: OrderStatus }) => {
-            console.log('OrderStatusTransitioned:', e);
+        channel.listen('.order.status.updated', (e: { status: OrderStatus }) => {
+            console.log('[OrderTracking] Status updated:', e);
             setOrder((prev) => {
                 if (!prev) return prev;
-                const updated = { ...prev, status: e.newStatus };
+                const updated = { ...prev, status: e.status };
+                persistOrder(updated);
+                return updated;
+            });
+            setLastRefreshed(new Date());
+        });
+
+        // Fallback: cũng lắng nghe tên event cũ phòng khi backend dùng tên khác
+        channel.listen('OrderStatusTransitioned', (e: { newStatus?: OrderStatus; status?: OrderStatus }) => {
+            const newStatus = e.newStatus ?? e.status;
+            if (!newStatus) return;
+            console.log('[OrderTracking] OrderStatusTransitioned:', newStatus);
+            setOrder((prev) => {
+                if (!prev) return prev;
+                const updated = { ...prev, status: newStatus };
                 persistOrder(updated);
                 return updated;
             });
@@ -90,8 +109,7 @@ export const OrderTrackingPage = () => {
         });
 
         return () => {
-            channel.stopListening('OrderStatusTransitioned');
-            echo.leaveChannel(channelName);
+            echo.leave(channelName);
         };
     }, [orderId]);
 

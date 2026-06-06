@@ -34,6 +34,7 @@ import { PackageEditPage } from '@/super-admin/features/packages/pages/PackageEd
 
 // Tenant Zone
 import { TenantDashboard } from '@/tenant/pages/TenantDashboard';
+import { OrderListPage } from '@/tenant/features/orders/pages/OrderListPage';
 
 // Public Menu Zone
 import { MenuPage } from '@/public-menu/features/menu/pages/MenuPage';
@@ -126,7 +127,19 @@ export const router = createBrowserRouter([
             },
             {
                 path: 'orders',
-                element: <div>Trang quản lý đơn hàng (Coming soon)</div>,
+                children: [
+                    {
+                        index: true,
+                        element: (
+                            <FeatureGuard
+                                feature={FeatureCode.POS_QUICK_ORDER}
+                                fallback={<UnauthorizedPage />}
+                            >
+                                <OrderListPage />
+                            </FeatureGuard>
+                        ),
+                    },
+                ],
             },
             {
                 path: 'settings',
