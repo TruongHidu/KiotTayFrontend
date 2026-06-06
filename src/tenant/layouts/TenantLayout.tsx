@@ -10,6 +10,7 @@ import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
     OrderedListOutlined,
+    TeamOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth.store';
 import { useLogout } from '@/auth/services/auth.hooks';
@@ -27,6 +28,7 @@ export const TenantLayout = () => {
 
     const hasMenuManagement = useFeatureFlag(FeatureCode.MENU_MANAGEMENT);
     const hasTableManagement = useFeatureFlag(FeatureCode.TABLE_MANAGEMENT);
+    const hasStaffManagement = useFeatureFlag(FeatureCode.STAFF_MANAGEMENT);
 
     const menuItems: MenuProps['items'] = [
         {
@@ -52,6 +54,12 @@ export const TenantLayout = () => {
             icon: <QrcodeOutlined />,
             label: 'Bàn & QR',
             onClick: () => navigate('/portal/tables'),
+        } : null,
+        hasStaffManagement ? {
+            key: '/portal/staff',
+            icon: <TeamOutlined />,
+            label: 'Nhân viên',
+            onClick: () => navigate('/portal/staff'),
         } : null,
         {
             key: '/portal/settings',

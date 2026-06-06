@@ -14,6 +14,7 @@ import { ProtectedRoute } from '@/auth/pages/ProtectedRoute';
 // Errors
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 import { UnauthorizedPage } from '@/pages/errors/UnauthorizedPage';
+import { UpgradeRequiredPage } from '@/pages/errors/UpgradeRequiredPage';
 
 // Public Landing
 import { PublicHomePage } from '@/pages/PublicHomePage';
@@ -40,6 +41,7 @@ import { MenuPage } from '@/public-menu/features/menu/pages/MenuPage';
 import { OrderTrackingPage } from '@/public-menu/features/menu/pages/OrderTrackingPage';
 
 import { MenuManagementPage } from '@/tenant/features/menu/pages/MenuManagementPage';
+import { StaffListPage } from '@/tenant/features/staff/pages/StaffListPage';
 import { FeatureGuard } from '@/auth/components/FeatureGuard';
 import { FeatureCode } from '@/types';
 
@@ -121,6 +123,14 @@ export const router = createBrowserRouter([
                 element: (
                     <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
                         <div>Trang quản lý bàn & QR (Coming soon)</div>
+                    </FeatureGuard>
+                ),
+            },
+            {
+                path: 'staff',
+                element: (
+                    <FeatureGuard feature={FeatureCode.STAFF_MANAGEMENT} fallback={<UpgradeRequiredPage />}>
+                        <StaffListPage />
                     </FeatureGuard>
                 ),
             },
