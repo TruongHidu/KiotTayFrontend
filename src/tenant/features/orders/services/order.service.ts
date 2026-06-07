@@ -35,8 +35,11 @@ export const orderService = {
      */
     getOrders: (params?: OrderListParams): Promise<PaginatedOrdersResponse> =>
         apiClient
-            .get<PaginatedOrdersResponse>('/tenant/orders', { params })
-            .then((res) => res.data),
+            .get<any>('/tenant/orders', { params })
+            .then((res) => ({
+                data: res.data.data.items,
+                meta: res.data.data.meta,
+            })),
 
     /**
      * GET /api/tenant/orders/{id}

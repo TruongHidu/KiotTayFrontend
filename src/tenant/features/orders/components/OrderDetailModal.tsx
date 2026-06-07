@@ -78,18 +78,24 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
     const itemCols: ColumnsType<OrderItem> = [
         {
             title: 'Món', dataIndex: 'item_name',
-            render: (name: string, r) => (
-                <div>
-                    <div className="font-medium text-gray-800">{name}</div>
-                    {r.note && <div className="text-xs text-gray-400 italic">📝 {r.note}</div>}
-                </div>
-            ),
+            render: (name: string, r) => {
+                const isNew = order && new Date(r.created_at).getTime() - new Date(order.created_at).getTime() > 5000;
+                return (
+                    <div>
+                        <div className="font-medium text-gray-800 flex items-center gap-2">
+                            {name}
+                            {isNew && <Tag color="blue" className="!m-0 text-[10px] leading-3 px-1.5 py-0.5">Mới gọi thêm</Tag>}
+                        </div>
+                        {r.note && <div className="text-xs text-gray-400 italic mt-0.5">📝 {r.note}</div>}
+                    </div>
+                );
+            },
         },
         { title: 'SL', dataIndex: 'quantity', width: 60, align: 'center',
           render: (q: number) => <span className="font-bold">{q}</span> },
         { title: 'Đơn giá', dataIndex: 'unit_price', width: 120, align: 'right',
           render: (p: string) => fmt(p) },
-        { title: 'Thành tiền', dataIndex: 'subtotal', width: 130, align: 'right',
+        { title: 'Thành tiền', dataIndex: 'line_total', width: 130, align: 'right',
           render: (s: string) => <span className="font-bold text-emerald-600">{fmt(s)}</span> },
     ];
 
@@ -176,8 +182,13 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                                 </Descriptions.Item>
                             )}
                             {order.customer_reference && (
-                                <Descriptions.Item label="Bàn/Tham chiếu" span={2}>
+                                <Descriptions.Item label="Bàn/Tham chiếu">
                                     {order.customer_reference}
+                                </Descriptions.Item>
+                            )}
+                            {order.note && (
+                                <Descriptions.Item label="Ghi chú tổng" span={2}>
+                                    📝 <span className="italic text-gray-600">{order.note}</span>
                                 </Descriptions.Item>
                             )}
                         </Descriptions>
@@ -186,7 +197,7 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                         <div>
                             <h3 className="font-bold text-gray-700 mb-2">🍽️ Danh sách món</h3>
                             <Table
-                                dataSource={order.items}
+                                dataSource={[...order.items].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())}
                                 columns={itemCols}
                                 rowKey="id"
                                 pagination={false}

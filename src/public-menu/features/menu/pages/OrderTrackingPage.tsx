@@ -8,16 +8,21 @@ import { formatCurrency } from '@/lib/formatters';
 import type { Order } from '@/types/public-menu';
 import type { OrderStatus } from '@/types/order';
 
-// FIX: Dùng đúng status enum từ backend (UPPERCASE)
+// Cập nhật status enum theo backend mới (lowercase)
 const ORDER_STEPS: { status: OrderStatus; label: string; icon: React.ReactNode; color: string }[] = [
-    { status: 'PENDING',   label: 'Chờ xác nhận', icon: <Clock size={20} />,       color: 'text-yellow-500' },
-    { status: 'CONFIRMED', label: 'Đã xác nhận',  icon: <CheckCircle2 size={20} />, color: 'text-blue-500'   },
-    { status: 'PREPARING', label: 'Đang nấu',     icon: <ChefHat size={20} />,     color: 'text-orange-500' },
-    { status: 'READY',     label: 'Sẵn sàng',     icon: <Utensils size={20} />,    color: 'text-green-500'  },
-    { status: 'COMPLETED', label: 'Hoàn thành',   icon: <CheckCircle2 size={20} />, color: 'text-emerald-600'},
+    { status: 'open',    label: 'Chờ xác nhận', icon: <Clock size={20} />,       color: 'text-yellow-500' },
+    { status: 'cooking', label: 'Đang nấu',     icon: <ChefHat size={20} />,     color: 'text-orange-500' },
+    { status: 'served',  label: 'Sẵn sàng',     icon: <Utensils size={20} />,    color: 'text-green-500'  },
+    { status: 'paid',    label: 'Hoàn thành',   icon: <CheckCircle2 size={20} />, color: 'text-emerald-600'},
 ];
 
 const getStepIndex = (status: OrderStatus): number => {
+    // Hỗ trợ cả legacy status cho tương thích ngược nếu cần
+    if (status === 'PENDING' || status === 'CONFIRMED') return 0;
+    if (status === 'PREPARING') return 1;
+    if (status === 'READY') return 2;
+    if (status === 'COMPLETED') return 3;
+
     return ORDER_STEPS.findIndex((s) => s.status === status);
 };
 
@@ -26,6 +31,7 @@ export const OrderTrackingPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const public_token = searchParams.get('public_token') || '';
+    const qrType = searchParams.get('type') || 'qr_static';
 
     const [order, setOrder] = useState<Order | null>(() => {
         try {
@@ -42,7 +48,7 @@ export const OrderTrackingPage = () => {
     const [lastRefreshed, setLastRefreshed] = useState(new Date());
 
     // FIX: Dùng đúng status enum UPPERCASE của backend
-    const TERMINAL_STATUSES: OrderStatus[] = ['COMPLETED', 'CANCELLED'];
+    const TERMINAL_STATUSES: OrderStatus[] = ['COMPLETED', 'CANCELLED', 'paid', 'cancelled'];
 
     const clearActiveOrder = () => {
         localStorage.removeItem('active_order_id');
@@ -83,25 +89,25 @@ export const OrderTrackingPage = () => {
         const echo = getEcho();
         const channel = echo.channel(channelName);
 
-        channel.listen('.order.status.updated', (e: { status: OrderStatus }) => {
-            console.log('[OrderTracking] Status updated:', e);
+        // Lắng nghe thay đổi trạng thái
+        channel.listen('.OrderStatusTransitioned', (e: { order: Order; from: OrderStatus; to: OrderStatus }) => {
+            console.log('[OrderTracking] OrderStatusTransitioned:', e);
+            if (!e.to) return;
             setOrder((prev) => {
                 if (!prev) return prev;
-                const updated = { ...prev, status: e.status };
+                const updated = { ...prev, status: e.to, ...e.order };
                 persistOrder(updated);
                 return updated;
             });
             setLastRefreshed(new Date());
         });
 
-        // Fallback: cũng lắng nghe tên event cũ phòng khi backend dùng tên khác
-        channel.listen('OrderStatusTransitioned', (e: { newStatus?: OrderStatus; status?: OrderStatus }) => {
-            const newStatus = e.newStatus ?? e.status;
-            if (!newStatus) return;
-            console.log('[OrderTracking] OrderStatusTransitioned:', newStatus);
+        // Lắng nghe khi có món mới được thêm (khách gọi thêm từ thiết bị khác)
+        channel.listen('.OrderItemsAdded', (e: { order: Order }) => {
+            console.log('[OrderTracking] OrderItemsAdded:', e);
             setOrder((prev) => {
                 if (!prev) return prev;
-                const updated = { ...prev, status: newStatus };
+                const updated = { ...prev, ...e.order };
                 persistOrder(updated);
                 return updated;
             });
@@ -109,9 +115,13 @@ export const OrderTrackingPage = () => {
         });
 
         return () => {
+            channel.stopListening('.OrderStatusTransitioned');
+            channel.stopListening('.OrderItemsAdded');
             echo.leave(channelName);
         };
     }, [orderId]);
+
+    const isTerminal = order ? TERMINAL_STATUSES.includes(order.status) : false;
 
     const activeStepIdx = order ? getStepIndex(order.status) : 0;
 
@@ -283,13 +293,20 @@ export const OrderTrackingPage = () => {
                     transition={{ delay: 0.3 }}
                     className="space-y-3"
                 >
-                    <button
-                        onClick={() => navigate(`/menu?public_token=${public_token}&type=qr_static&action=add_items`)}
-                        className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-200"
-                    >
-                        <Plus size={20} />
-                        Gọi thêm món
-                    </button>
+                    {isTerminal ? (
+                        <div className="w-full bg-gray-100 text-gray-400 rounded-2xl py-4 font-bold flex items-center justify-center gap-2 cursor-not-allowed border border-gray-200">
+                            <Plus size={20} />
+                            Đơn đã kết thúc, không thể gọi thêm
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => navigate(`/menu?public_token=${public_token}&type=${qrType}&action=add_items`)}
+                            className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-200"
+                        >
+                            <Plus size={20} />
+                            Gọi thêm món
+                        </button>
+                    )}
                     <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1.5">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>

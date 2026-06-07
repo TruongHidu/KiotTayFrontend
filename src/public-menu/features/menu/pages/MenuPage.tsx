@@ -54,7 +54,7 @@ export const MenuPage = () => {
                     if (isActive) {
                         // Save latest data to localStorage before redirecting
                         localStorage.setItem('active_order_data', JSON.stringify(activeOrder));
-                        navigate(`/menu/order-tracking/${activeOrderId}?public_token=${public_token}`);
+                        navigate(`/menu/order-tracking/${activeOrderId}?public_token=${public_token}&type=${qrType}`);
                         return; // Stop loading menu
                     } else {
                         // Order is terminal (COMPLETED/CANCELLED), clear everything
@@ -130,7 +130,7 @@ export const MenuPage = () => {
 
             clearCart();
             setCartOpen(false);
-            navigate(`/menu/order-tracking/${orderId}?public_token=${public_token}`);
+            navigate(`/menu/order-tracking/${orderId}?public_token=${public_token}&type=${qrType}`);
         } catch (err) {
             console.error('[MenuPage] Lỗi đặt đơn:', err);
             alert('Không thể gửi đơn. Vui lòng thử lại.');

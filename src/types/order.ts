@@ -60,8 +60,9 @@ export interface OrderItem {
     item_name: string;
     quantity: number;
     unit_price: string;
-    subtotal: string;
+    line_total: string;
     note?: string | null;
+    created_at: string;
 }
 
 export interface Payment {
@@ -86,6 +87,7 @@ export interface Order {
     customer_phone: string | null;
     customer_reference: string | null;
     guest_count: number | null;
+    note?: string | null;
     subtotal_amount: string;
     discount_amount: string;
     tax_amount: string;
