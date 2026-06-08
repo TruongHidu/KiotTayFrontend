@@ -40,6 +40,8 @@ import { MenuPage } from '@/public-menu/features/menu/pages/MenuPage';
 import { OrderTrackingPage } from '@/public-menu/features/menu/pages/OrderTrackingPage';
 
 import { MenuManagementPage } from '@/tenant/features/menu/pages/MenuManagementPage';
+import { TableAreaPage } from '@/tenant/features/tables/pages/TableAreaPage';
+import { RestaurantTablePage } from '@/tenant/features/tables/pages/RestaurantTablePage';
 import { FeatureGuard } from '@/auth/components/FeatureGuard';
 import { FeatureCode } from '@/types';
 
@@ -117,10 +119,18 @@ export const router = createBrowserRouter([
                 ),
             },
             {
-                path: 'tables',
+                path: 'table-areas',
                 element: (
                     <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
-                        <div>Trang quản lý bàn & QR (Coming soon)</div>
+                        <TableAreaPage />
+                    </FeatureGuard>
+                ),
+            },
+            {
+                path: 'restaurant-tables',
+                element: (
+                    <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
+                        <RestaurantTablePage />
                     </FeatureGuard>
                 ),
             },

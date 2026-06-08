@@ -4,7 +4,7 @@ import { Layout, Menu, Dropdown, Avatar, Space, Button } from 'antd';
 import {
     DashboardOutlined,
     ShopOutlined,
-    QrcodeOutlined,
+    TableOutlined,
     SettingOutlined,
     LogoutOutlined,
     MenuFoldOutlined,
@@ -48,10 +48,21 @@ export const TenantLayout = () => {
             onClick: () => navigate('/portal/orders'),
         },
         hasTableManagement ? {
-            key: '/portal/tables',
-            icon: <QrcodeOutlined />,
-            label: 'Bàn & QR',
-            onClick: () => navigate('/portal/tables'),
+            key: '/portal/tables-group',
+            icon: <TableOutlined />,
+            label: 'Quản lý bàn',
+            children: [
+                {
+                    key: '/portal/table-areas',
+                    label: 'Khu vực bàn',
+                    onClick: () => navigate('/portal/table-areas'),
+                },
+                {
+                    key: '/portal/restaurant-tables',
+                    label: 'Danh sách bàn',
+                    onClick: () => navigate('/portal/restaurant-tables'),
+                },
+            ],
         } : null,
         {
             key: '/portal/settings',
