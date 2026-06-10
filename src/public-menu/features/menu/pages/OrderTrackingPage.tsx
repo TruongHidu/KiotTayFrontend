@@ -2,19 +2,27 @@ import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Clock, ChefHat, Utensils, Plus, RefreshCw } from 'lucide-react';
-import { echo } from '@/services/echo';
+import { getEcho } from '@/lib/echoClient';
 import { fetchOrderStatus } from '../services/menuService';
 import { formatCurrency } from '@/lib/formatters';
-import type { Order, OrderStatus } from '@/types/public-menu';
+import type { Order } from '@/types/public-menu';
+import type { OrderStatus } from '@/types/order';
 
+// Cập nhật status enum theo backend mới (lowercase)
 const ORDER_STEPS: { status: OrderStatus; label: string; icon: React.ReactNode; color: string }[] = [
-    { status: 'open', label: 'Chờ xác nhận', icon: <Clock size={20} />, color: 'text-yellow-500' },
-    { status: 'cooking', label: 'Đang nấu', icon: <ChefHat size={20} />, color: 'text-orange-500' },
-    { status: 'served', label: 'Đã phục vụ', icon: <Utensils size={20} />, color: 'text-blue-500' },
-    { status: 'paid', label: 'Đã thanh toán', icon: <CheckCircle2 size={20} />, color: 'text-green-500' },
+    { status: 'open',    label: 'Chờ xác nhận', icon: <Clock size={20} />,       color: 'text-yellow-500' },
+    { status: 'cooking', label: 'Đang nấu',     icon: <ChefHat size={20} />,     color: 'text-orange-500' },
+    { status: 'served',  label: 'Sẵn sàng',     icon: <Utensils size={20} />,    color: 'text-green-500'  },
+    { status: 'paid',    label: 'Hoàn thành',   icon: <CheckCircle2 size={20} />, color: 'text-emerald-600'},
 ];
 
 const getStepIndex = (status: OrderStatus): number => {
+    // Hỗ trợ cả legacy status cho tương thích ngược nếu cần
+    if (status === 'PENDING' || status === 'CONFIRMED') return 0;
+    if (status === 'PREPARING') return 1;
+    if (status === 'READY') return 2;
+    if (status === 'COMPLETED') return 3;
+
     return ORDER_STEPS.findIndex((s) => s.status === status);
 };
 
@@ -23,6 +31,7 @@ export const OrderTrackingPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const public_token = searchParams.get('public_token') || '';
+    const qrType = searchParams.get('type') || 'qr_static';
 
     const [order, setOrder] = useState<Order | null>(() => {
         try {
@@ -38,7 +47,8 @@ export const OrderTrackingPage = () => {
     const [loading, setLoading] = useState(order === null); // skip skeleton if we have cache
     const [lastRefreshed, setLastRefreshed] = useState(new Date());
 
-    const TERMINAL_STATUSES: OrderStatus[] = ['paid', 'cancelled'];
+    // FIX: Dùng đúng status enum UPPERCASE của backend
+    const TERMINAL_STATUSES: OrderStatus[] = ['COMPLETED', 'CANCELLED', 'paid', 'cancelled'];
 
     const clearActiveOrder = () => {
         localStorage.removeItem('active_order_id');
@@ -74,15 +84,30 @@ export const OrderTrackingPage = () => {
 
         if (!orderId) return;
 
-        // Real-time WebSocket Subscription via Laravel Echo
+        // Real-time WebSocket Subscription via Laravel Echo (dùng singleton getEcho)
         const channelName = `order.${orderId}`;
+        const echo = getEcho();
         const channel = echo.channel(channelName);
 
-        channel.listen('OrderStatusTransitioned', (e: { newStatus: OrderStatus }) => {
-            console.log('OrderStatusTransitioned:', e);
+        // Lắng nghe thay đổi trạng thái
+        channel.listen('.OrderStatusTransitioned', (e: { order: Order; from: OrderStatus; to: OrderStatus }) => {
+            console.log('[OrderTracking] OrderStatusTransitioned:', e);
+            if (!e.to) return;
             setOrder((prev) => {
                 if (!prev) return prev;
-                const updated = { ...prev, status: e.newStatus };
+                const updated = { ...prev, status: e.to, ...e.order };
+                persistOrder(updated);
+                return updated;
+            });
+            setLastRefreshed(new Date());
+        });
+
+        // Lắng nghe khi có món mới được thêm (khách gọi thêm từ thiết bị khác)
+        channel.listen('.OrderItemsAdded', (e: { order: Order }) => {
+            console.log('[OrderTracking] OrderItemsAdded:', e);
+            setOrder((prev) => {
+                if (!prev) return prev;
+                const updated = { ...prev, ...e.order };
                 persistOrder(updated);
                 return updated;
             });
@@ -90,10 +115,13 @@ export const OrderTrackingPage = () => {
         });
 
         return () => {
-            channel.stopListening('OrderStatusTransitioned');
-            echo.leaveChannel(channelName);
+            channel.stopListening('.OrderStatusTransitioned');
+            channel.stopListening('.OrderItemsAdded');
+            echo.leave(channelName);
         };
     }, [orderId]);
+
+    const isTerminal = order ? TERMINAL_STATUSES.includes(order.status) : false;
 
     const activeStepIdx = order ? getStepIndex(order.status) : 0;
 
@@ -265,13 +293,20 @@ export const OrderTrackingPage = () => {
                     transition={{ delay: 0.3 }}
                     className="space-y-3"
                 >
-                    <button
-                        onClick={() => navigate(`/menu?public_token=${public_token}&type=qr_static&action=add_items`)}
-                        className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-200"
-                    >
-                        <Plus size={20} />
-                        Gọi thêm món
-                    </button>
+                    {isTerminal ? (
+                        <div className="w-full bg-gray-100 text-gray-400 rounded-2xl py-4 font-bold flex items-center justify-center gap-2 cursor-not-allowed border border-gray-200">
+                            <Plus size={20} />
+                            Đơn đã kết thúc, không thể gọi thêm
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => navigate(`/menu?public_token=${public_token}&type=${qrType}&action=add_items`)}
+                            className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-200"
+                        >
+                            <Plus size={20} />
+                            Gọi thêm món
+                        </button>
+                    )}
                     <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1.5">
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>

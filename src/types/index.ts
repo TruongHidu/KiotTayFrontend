@@ -6,3 +6,4 @@ export * from './subscription';
 export * from './api';
 export * from './menu';
 export * from './staff';
+export * from './order';

@@ -47,14 +47,17 @@ export const MenuPage = () => {
             if (activeOrderId && !isAddingToOrder) {
                 try {
                     const activeOrder = await fetchOrderStatus(activeOrderId);
-                    const isActive = activeOrder.status === 'open' || activeOrder.status === 'cooking';
+                    // FIX: Dùng đúng status enum của backend (UPPERCASE)
+                    // Đơn "đang hoạt động" = chưa hoàn thành / chưa huỷ
+                    const activeStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'];
+                    const isActive = activeStatuses.includes(activeOrder.status);
                     if (isActive) {
                         // Save latest data to localStorage before redirecting
                         localStorage.setItem('active_order_data', JSON.stringify(activeOrder));
-                        navigate(`/menu/order-tracking/${activeOrderId}?public_token=${public_token}`);
+                        navigate(`/menu/order-tracking/${activeOrderId}?public_token=${public_token}&type=${qrType}`);
                         return; // Stop loading menu
                     } else {
-                        // Order is terminal (served/paid/cancelled), clear everything
+                        // Order is terminal (COMPLETED/CANCELLED), clear everything
                         localStorage.removeItem('active_order_id');
                         localStorage.removeItem('active_order_data');
                     }
@@ -127,8 +130,9 @@ export const MenuPage = () => {
 
             clearCart();
             setCartOpen(false);
-            navigate(`/menu/order-tracking/${orderId}?public_token=${public_token}`);
-        } catch {
+            navigate(`/menu/order-tracking/${orderId}?public_token=${public_token}&type=${qrType}`);
+        } catch (err) {
+            console.error('[MenuPage] Lỗi đặt đơn:', err);
             alert('Không thể gửi đơn. Vui lòng thử lại.');
         } finally {
             setIsPlacingOrder(false);
