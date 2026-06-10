@@ -5,5 +5,6 @@ export * from './package';
 export * from './subscription';
 export * from './api';
 export * from './menu';
+export * from './table';
 export * from './staff';
 export * from './order';
