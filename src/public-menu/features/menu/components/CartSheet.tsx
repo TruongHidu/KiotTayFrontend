@@ -132,26 +132,30 @@ export const CartSheet = ({ open, onClose, onPlaceOrder, isPlacingOrder, isAddin
                             {items.length > 0 && (
                                 <div className="border-t border-gray-100 px-5 py-5 space-y-4 bg-white/80 backdrop-blur-md">
                                     <div className="space-y-3 mb-4">
-                                        <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
-                                            <User size={16} className="text-gray-400" />
-                                            <input 
-                                                type="text" 
-                                                placeholder="Tên của bạn (Tùy chọn)" 
-                                                className="bg-transparent border-none outline-none w-full text-sm text-gray-700"
-                                                value={customerName}
-                                                onChange={(e) => setCustomerName(e.target.value)}
-                                            />
-                                        </div>
-                                        <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
-                                            <Phone size={16} className="text-gray-400" />
-                                            <input 
-                                                type="tel" 
-                                                placeholder="Số điện thoại (Tùy chọn)" 
-                                                className="bg-transparent border-none outline-none w-full text-sm text-gray-700"
-                                                value={customerPhone}
-                                                onChange={(e) => setCustomerPhone(e.target.value)}
-                                            />
-                                        </div>
+                                        {!isAddingToOrder && (
+                                            <>
+                                                <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+                                                    <User size={16} className="text-gray-400" />
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Tên của bạn (Tùy chọn)" 
+                                                        className="bg-transparent border-none outline-none w-full text-sm text-gray-700"
+                                                        value={customerName}
+                                                        onChange={(e) => setCustomerName(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+                                                    <Phone size={16} className="text-gray-400" />
+                                                    <input 
+                                                        type="tel" 
+                                                        placeholder="Số điện thoại (Tùy chọn)" 
+                                                        className="bg-transparent border-none outline-none w-full text-sm text-gray-700"
+                                                        value={customerPhone}
+                                                        onChange={(e) => setCustomerPhone(e.target.value)}
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                         <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
                                             <FileText size={16} className="text-gray-400" />
                                             <input 

@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { Layout, Menu, Dropdown, Avatar, Space, Button } from 'antd';
+import { useState, useEffect } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Layout, Menu, Dropdown, Avatar, Space, Button, Badge } from 'antd';
 import {
     DashboardOutlined,
     ShopOutlined,
@@ -10,23 +10,51 @@ import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
     OrderedListOutlined,
+    TeamOutlined,
+    ShoppingCartOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth.store';
 import { useLogout } from '@/auth/services/auth.hooks';
 import { useFeatureFlag } from '@/auth/hooks/useFeatureFlag';
 import { FeatureCode } from '@/types';
 import type { MenuProps } from 'antd';
+import { useOrderRealtimeListener } from '@/tenant/features/orders/services/useOrderRealtimeListener';
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 const { Header, Sider, Content } = Layout;
 
 export const TenantLayout = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [collapsed, setCollapsed] = useState(false);
     const user = useAuthStore((state) => state.user);
     const { mutate: logout } = useLogout();
 
+    // ── Realtime: lấy restaurantId từ user profile ────────────────────────
+    const restaurantId = (user as { restaurant_id?: string } | null)?.restaurant_id;
+
+    // ── Notification badge state ──────────────────────────────────────────
+    const { newOrderBadge, resetBadge } = useNotificationStore();
+
+    // ── Kích hoạt realtime listener toàn app ─────────────────────────────
+    useOrderRealtimeListener({
+        restaurantId,
+        enabled: !!restaurantId,
+    });
+
+    // ── Reset badge khi người dùng vào trang danh sách đơn hàng ──────────
+    useEffect(() => {
+        if (location.pathname.startsWith('/portal/orders')) {
+            resetBadge();
+        }
+    }, [location.pathname, resetBadge]);
+
+    const isPosPage = location.pathname.startsWith('/portal/orders');
+
     const hasMenuManagement = useFeatureFlag(FeatureCode.MENU_MANAGEMENT);
     const hasTableManagement = useFeatureFlag(FeatureCode.TABLE_MANAGEMENT);
+    const hasStaffManagement = useFeatureFlag(FeatureCode.STAFF_MANAGEMENT);
+    const hasQuickOrder = useFeatureFlag(FeatureCode.POS_QUICK_ORDER);
 
     const menuItems: MenuProps['items'] = [
         {
@@ -43,8 +71,40 @@ export const TenantLayout = () => {
         } : null,
         {
             key: '/portal/orders',
-            icon: <OrderedListOutlined />,
-            label: 'Đơn hàng',
+            // Hiển thị badge đỏ khi có đơn hàng mới chưa xem
+            icon: (
+                <Badge
+                    count={newOrderBadge}
+                    size="small"
+                    offset={[6, -2]}
+                    style={{ backgroundColor: '#ef4444' }}
+                >
+                    <OrderedListOutlined />
+                </Badge>
+            ),
+            label: (
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Đơn hàng
+                    {newOrderBadge > 0 && !collapsed && (
+                        <span
+                            style={{
+                                background: '#ef4444',
+                                color: '#fff',
+                                borderRadius: 10,
+                                padding: '0 6px',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                lineHeight: '18px',
+                                minWidth: 18,
+                                textAlign: 'center',
+                                display: 'inline-block',
+                            }}
+                        >
+                            {newOrderBadge > 99 ? '99+' : newOrderBadge}
+                        </span>
+                    )}
+                </span>
+            ),
             onClick: () => navigate('/portal/orders'),
         },
         hasTableManagement ? {
@@ -63,6 +123,12 @@ export const TenantLayout = () => {
                     onClick: () => navigate('/portal/restaurant-tables'),
                 },
             ],
+        } : null,
+        hasStaffManagement ? {
+            key: '/portal/staff',
+            icon: <TeamOutlined />,
+            label: 'Nhân viên',
+            onClick: () => navigate('/portal/staff'),
         } : null,
         {
             key: '/portal/settings',
@@ -107,7 +173,7 @@ export const TenantLayout = () => {
                     theme="dark"
                     mode="inline"
                     items={menuItems}
-                    defaultSelectedKeys={['/portal']}
+                    selectedKeys={[location.pathname]}
                     style={{ backgroundColor: '#064e3b' }}
                 />
             </Sider>
@@ -145,10 +211,10 @@ export const TenantLayout = () => {
 
                 <Content
                     style={{
-                        margin: '16px',
-                        padding: '24px',
+                        margin: location.pathname === '/portal/orders/takeaway' ? 0 : '16px',
+                        padding: location.pathname === '/portal/orders/takeaway' ? 0 : '24px',
                         background: '#f0f2f5',
-                        borderRadius: '8px',
+                        borderRadius: location.pathname === '/portal/orders/takeaway' ? 0 : '8px',
                         overflow: 'auto',
                     }}
                 >

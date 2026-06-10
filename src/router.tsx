@@ -14,6 +14,7 @@ import { ProtectedRoute } from '@/auth/pages/ProtectedRoute';
 // Errors
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 import { UnauthorizedPage } from '@/pages/errors/UnauthorizedPage';
+import { UpgradeRequiredPage } from '@/pages/errors/UpgradeRequiredPage';
 
 // Public Landing
 import { PublicHomePage } from '@/pages/PublicHomePage';
@@ -34,6 +35,7 @@ import { PackageEditPage } from '@/super-admin/features/packages/pages/PackageEd
 
 // Tenant Zone
 import { TenantDashboard } from '@/tenant/pages/TenantDashboard';
+import { OrderListPage } from '@/tenant/features/orders/pages/OrderListPage';
 
 // Public Menu Zone
 import { MenuPage } from '@/public-menu/features/menu/pages/MenuPage';
@@ -42,6 +44,7 @@ import { OrderTrackingPage } from '@/public-menu/features/menu/pages/OrderTracki
 import { MenuManagementPage } from '@/tenant/features/menu/pages/MenuManagementPage';
 import { TableAreaPage } from '@/tenant/features/tables/pages/TableAreaPage';
 import { RestaurantTablePage } from '@/tenant/features/tables/pages/RestaurantTablePage';
+import { StaffListPage } from '@/tenant/features/staff/pages/StaffListPage';
 import { FeatureGuard } from '@/auth/components/FeatureGuard';
 import { FeatureCode } from '@/types';
 
@@ -135,8 +138,28 @@ export const router = createBrowserRouter([
                 ),
             },
             {
+                path: 'staff',
+                element: (
+                    <FeatureGuard feature={FeatureCode.STAFF_MANAGEMENT} fallback={<UpgradeRequiredPage />}>
+                        <StaffListPage />
+                    </FeatureGuard>
+                ),
+            },
+            {
                 path: 'orders',
-                element: <div>Trang quản lý đơn hàng (Coming soon)</div>,
+                children: [
+                    {
+                        index: true,
+                        element: (
+                            <FeatureGuard
+                                feature={FeatureCode.POS_QUICK_ORDER}
+                                fallback={<UnauthorizedPage />}
+                            >
+                                <OrderListPage />
+                            </FeatureGuard>
+                        ),
+                    },
+                ],
             },
             {
                 path: 'settings',
