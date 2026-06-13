@@ -45,6 +45,7 @@ import { MenuManagementPage } from '@/tenant/features/menu/pages/MenuManagementP
 import { TableAreaPage } from '@/tenant/features/tables/pages/TableAreaPage';
 import { RestaurantTablePage } from '@/tenant/features/tables/pages/RestaurantTablePage';
 import { StaffListPage } from '@/tenant/features/staff/pages/StaffListPage';
+import { PaymentMethodSettingsPage } from '@/tenant/features/settings/pages/PaymentMethodSettingsPage';
 import { FeatureGuard } from '@/auth/components/FeatureGuard';
 import { FeatureCode } from '@/types';
 
@@ -163,7 +164,7 @@ export const router = createBrowserRouter([
             },
             {
                 path: 'settings',
-                element: <div>Trang cài đặt nhà hàng (Coming soon)</div>,
+                element: <PaymentMethodSettingsPage />,
             },
         ],
     },

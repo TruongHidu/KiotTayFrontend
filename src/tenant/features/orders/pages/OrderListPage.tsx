@@ -41,7 +41,7 @@ const STATUS_OPTIONS = [
 const NEXT_STATUSES: Record<OrderStatus, OrderStatus[]> = {
     open: ['cooking', 'cancelled'],
     cooking: ['served', 'cancelled'],
-    served: ['paid'],
+    served: [],
     paid: [],
     cancelled: [],
     // Legacy
@@ -63,8 +63,7 @@ const SERVICE_OPTIONS = [
 const KANBAN_COLUMNS: { id: OrderStatus; title: string; color: string; bg: string }[] = [
     { id: 'open', title: 'Chờ xác nhận', color: '#d97706', bg: '#fef3c7' },
     { id: 'cooking', title: 'Đang nấu', color: '#ea580c', bg: '#ffedd5' },
-    { id: 'served', title: 'Sẵn sàng', color: '#059669', bg: '#d1fae5' },
-    { id: 'paid', title: 'Hoàn thành', color: '#4f46e5', bg: '#e0e7ff' },
+    { id: 'served', title: 'Đã lên món', color: '#059669', bg: '#d1fae5' },
 ];
 
 export const OrderListPage = () => {
@@ -143,6 +142,14 @@ export const OrderListPage = () => {
         };
 
         orders.forEach(o => {
+            // Nếu thanh toán thành công (đã thanh toán đủ) thì ẩn đi khỏi Kanban
+            const totalPaid = (o.payments || []).reduce((sum, p) => sum + parseFloat(p.amount), 0);
+            const isFullyPaid = totalPaid >= parseFloat(o.final_amount) && totalPaid > 0;
+            
+            if (isFullyPaid) {
+                return;
+            }
+
             if (groups[o.status]) {
                 groups[o.status].push(o);
             } else {

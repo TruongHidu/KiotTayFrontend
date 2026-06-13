@@ -13,6 +13,7 @@ export const ORDER_KEYS = {
     list: (params: OrderListParams) => [...ORDER_KEYS.lists(), params] as const,
     details: () => [...ORDER_KEYS.all, 'detail'] as const,
     detail: (id: string) => [...ORDER_KEYS.details(), id] as const,
+    payments: (id: string) => [...ORDER_KEYS.detail(id), 'payments'] as const,
 };
 
 /**
@@ -33,6 +34,17 @@ export const useOrder = (id: string, enabled = true) => {
     return useQuery({
         queryKey: ORDER_KEYS.detail(id),
         queryFn: () => orderService.getOrder(id),
+        enabled: !!id && enabled,
+    });
+};
+
+/**
+ * Lấy lịch sử thanh toán của đơn hàng
+ */
+export const useOrderPayments = (id: string, enabled = true) => {
+    return useQuery({
+        queryKey: ORDER_KEYS.payments(id),
+        queryFn: () => orderService.getPayments(id),
         enabled: !!id && enabled,
     });
 };
@@ -81,6 +93,7 @@ export const useCreatePayment = () => {
         onSuccess: (_, { orderId }) => {
             qc.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
             qc.invalidateQueries({ queryKey: ORDER_KEYS.detail(orderId) });
+            qc.invalidateQueries({ queryKey: ORDER_KEYS.payments(orderId) });
         },
     });
 };

@@ -47,10 +47,8 @@ export const MenuPage = () => {
             if (activeOrderId && !isAddingToOrder) {
                 try {
                     const activeOrder = await fetchOrderStatus(activeOrderId);
-                    // FIX: Dùng đúng status enum của backend (UPPERCASE)
-                    // Đơn "đang hoạt động" = chưa hoàn thành / chưa huỷ
-                    const activeStatuses = ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'];
-                    const isActive = activeStatuses.includes(activeOrder.status);
+                    const terminalStatuses = ['COMPLETED', 'CANCELLED', 'paid', 'cancelled'];
+                    const isActive = !terminalStatuses.includes(activeOrder.status);
                     if (isActive) {
                         // Save latest data to localStorage before redirecting
                         localStorage.setItem('active_order_data', JSON.stringify(activeOrder));

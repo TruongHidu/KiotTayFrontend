@@ -1,7 +1,7 @@
 import apiClient from '@/api/http';
 import type {
     Order,
-    Payment,
+    PaymentRecord,
     CreateOrderRequest,
     UpdateOrderStatusRequest,
     CreatePaymentRequest,
@@ -18,7 +18,7 @@ export interface OrderApiResponse {
 
 export interface PaymentApiResponse {
     message: string;
-    data: Payment;
+    data: PaymentRecord;
 }
 
 export interface StatusApiResponse {
@@ -82,4 +82,13 @@ export const orderService = {
         apiClient
             .post<PaymentApiResponse>(`/tenant/orders/${orderId}/payments`, data)
             .then((res) => res.data),
+
+    /**
+     * GET /api/tenant/orders/{id}/payments
+     * Lấy lịch sử thanh toán của đơn hàng
+     */
+    getPayments: (orderId: string): Promise<PaymentRecord[]> =>
+        apiClient
+            .get<{ data: PaymentRecord[] }>(`/tenant/orders/${orderId}/payments`)
+            .then((res) => res.data.data),
 };

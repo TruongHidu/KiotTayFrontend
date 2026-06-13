@@ -19,9 +19,20 @@ export const TableMap = ({ onSelectTable, onViewOrder }: Props) => {
         return <div className="flex justify-center p-10"><Spin /></div>;
     }
 
-    const openOrders = orderData?.data.filter(
-        o => o.status !== 'COMPLETED' && o.status !== 'CANCELLED' && o.service_type === 'DINE_IN'
-    ) || [];
+    const openOrders = orderData?.data.filter(o => {
+        if (o.service_type !== 'DINE_IN') return false;
+        if (o.status === 'CANCELLED' || o.status === 'cancelled') return false;
+        
+        // Hide if fully paid
+        const totalPaid = (o.payments || []).reduce((sum, p) => sum + parseFloat(p.amount), 0);
+        const isFullyPaid = totalPaid >= parseFloat(o.final_amount) && totalPaid > 0;
+        if (isFullyPaid) return false;
+
+        // Still hide COMPLETED if backend specifically sets it when completely closed
+        if (o.status === 'COMPLETED') return false;
+
+        return true;
+    }) || [];
 
     // Gắn order vào table
     const tablesWithOrders = MOCK_TABLES.map(t => {

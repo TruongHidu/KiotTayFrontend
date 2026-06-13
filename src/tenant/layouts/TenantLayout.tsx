@@ -11,7 +11,6 @@ import {
     MenuUnfoldOutlined,
     OrderedListOutlined,
     TeamOutlined,
-    ShoppingCartOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth.store';
 import { useLogout } from '@/auth/services/auth.hooks';
@@ -49,12 +48,9 @@ export const TenantLayout = () => {
         }
     }, [location.pathname, resetBadge]);
 
-    const isPosPage = location.pathname.startsWith('/portal/orders');
-
     const hasMenuManagement = useFeatureFlag(FeatureCode.MENU_MANAGEMENT);
     const hasTableManagement = useFeatureFlag(FeatureCode.TABLE_MANAGEMENT);
     const hasStaffManagement = useFeatureFlag(FeatureCode.STAFF_MANAGEMENT);
-    const hasQuickOrder = useFeatureFlag(FeatureCode.POS_QUICK_ORDER);
 
     const menuItems: MenuProps['items'] = [
         {
@@ -131,10 +127,16 @@ export const TenantLayout = () => {
             onClick: () => navigate('/portal/staff'),
         } : null,
         {
-            key: '/portal/settings',
+            key: '/portal/settings-group',
             icon: <SettingOutlined />,
             label: 'Cài đặt',
-            onClick: () => navigate('/portal/settings'),
+            children: [
+                {
+                    key: '/portal/settings',
+                    label: 'Cấu hình thanh toán',
+                    onClick: () => navigate('/portal/settings'),
+                },
+            ],
         },
     ].filter(Boolean) as MenuProps['items'];
 

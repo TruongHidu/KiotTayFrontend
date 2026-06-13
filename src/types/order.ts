@@ -47,12 +47,23 @@ export interface UpdateOrderStatusRequest {
 }
 
 export interface CreatePaymentRequest {
-    method: PaymentMethod;
+    payment_method: 'cash' | 'card' | 'transfer' | 'ewallet';
+    amount?: number;
+    reference_no?: string;
+}
+
+export interface PaymentRecord {
+    id: string;
     amount: number;
-    note?: string;
+    payment_method: 'cash' | 'card' | 'transfer' | 'ewallet';
+    method_label: string;
+    reference_no: string | null;
+    paid_at: string;
 }
 
 // ---- Resource shapes (from API) ----
+
+export type OrderItemStatus = 'pending' | 'cooking' | 'ready' | 'served' | 'cancelled';
 
 export interface OrderItem {
     id: string;
@@ -62,6 +73,7 @@ export interface OrderItem {
     unit_price: string;
     line_total: string;
     note?: string | null;
+    status?: OrderItemStatus;
     created_at: string;
 }
 
@@ -133,7 +145,7 @@ export const ORDER_STATUS_CONFIG: Record<
     // Backend mới
     open:      { label: 'Chờ xác nhận', color: '#d97706', bg: '#fef3c7' },
     cooking:   { label: 'Đang làm',     color: '#7c3aed', bg: '#ede9fe' },
-    served:    { label: 'Sẵn sàng',     color: '#059669', bg: '#d1fae5' },
+    served:    { label: 'Đã lên món',     color: '#059669', bg: '#d1fae5' },
     paid:      { label: 'Hoàn thành',   color: '#065f46', bg: '#a7f3d0' },
     cancelled: { label: 'Đã huỷ',       color: '#dc2626', bg: '#fee2e2' },
     
@@ -141,7 +153,7 @@ export const ORDER_STATUS_CONFIG: Record<
     PENDING:   { label: 'Chờ xác nhận', color: '#d97706', bg: '#fef3c7' },
     CONFIRMED: { label: 'Đã xác nhận',  color: '#2563eb', bg: '#dbeafe' },
     PREPARING: { label: 'Đang làm',     color: '#7c3aed', bg: '#ede9fe' },
-    READY:     { label: 'Sẵn sàng',     color: '#059669', bg: '#d1fae5' },
+    READY:     { label: 'Đã lên món',     color: '#059669', bg: '#d1fae5' },
     COMPLETED: { label: 'Hoàn thành',   color: '#065f46', bg: '#a7f3d0' },
     CANCELLED: { label: 'Đã huỷ',       color: '#dc2626', bg: '#fee2e2' },
 };

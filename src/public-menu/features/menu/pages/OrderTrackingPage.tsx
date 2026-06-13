@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Clock, ChefHat, Utensils, Plus, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Clock, ChefHat, Utensils, Plus, RefreshCw, Home } from 'lucide-react';
 import { getEcho } from '@/lib/echoClient';
 import { fetchOrderStatus } from '../services/menuService';
 import { formatCurrency } from '@/lib/formatters';
@@ -294,10 +294,13 @@ export const OrderTrackingPage = () => {
                     className="space-y-3"
                 >
                     {isTerminal ? (
-                        <div className="w-full bg-gray-100 text-gray-400 rounded-2xl py-4 font-bold flex items-center justify-center gap-2 cursor-not-allowed border border-gray-200">
-                            <Plus size={20} />
-                            Đơn đã kết thúc, không thể gọi thêm
-                        </div>
+                        <button
+                            onClick={() => navigate(`/menu?public_token=${public_token}&type=${qrType}`)}
+                            className="w-full bg-gray-800 hover:bg-gray-900 text-white rounded-2xl py-4 font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-gray-200"
+                        >
+                            <Home size={20} />
+                            Quay lại Menu đặt đơn mới
+                        </button>
                     ) : (
                         <button
                             onClick={() => navigate(`/menu?public_token=${public_token}&type=${qrType}&action=add_items`)}

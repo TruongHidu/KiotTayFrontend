@@ -38,7 +38,7 @@ const NEXT_STATUSES: Record<OrderStatus, OrderStatus[]> = {
     // Backend mới
     open:      ['cooking', 'cancelled'],
     cooking:   ['served', 'cancelled'],
-    served:    ['paid'],
+    served:    [],
     paid:      [],
     cancelled: [],
 
@@ -80,11 +80,19 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
             title: 'Món', dataIndex: 'item_name',
             render: (name: string, r) => {
                 const isNew = order && new Date(r.created_at).getTime() - new Date(order.created_at).getTime() > 5000;
+                const isPending = r.status === 'pending';
                 return (
                     <div>
-                        <div className="font-medium text-gray-800 flex items-center gap-2">
+                        <div className="font-medium text-gray-800 flex items-center gap-2 flex-wrap">
                             {name}
-                            {isNew && <Tag color="blue" className="!m-0 text-[10px] leading-3 px-1.5 py-0.5">Mới gọi thêm</Tag>}
+                            {isPending && (
+                                <Tag color="orange" className="!m-0 text-[10px] leading-3 px-1.5 py-0.5 animate-pulse">
+                                    🆕 Chờ nấu
+                                </Tag>
+                            )}
+                            {isNew && !isPending && (
+                                <Tag color="blue" className="!m-0 text-[10px] leading-3 px-1.5 py-0.5">Mới gọi thêm</Tag>
+                            )}
                         </div>
                         {r.note && <div className="text-xs text-gray-400 italic mt-0.5">📝 {r.note}</div>}
                     </div>
@@ -155,7 +163,7 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                     )
                 }
                 centered
-                destroyOnClose
+                destroyOnHidden
             >
                 {isLoading || !order ? (
                     <div className="flex justify-center py-16">
@@ -197,12 +205,22 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                         <div>
                             <h3 className="font-bold text-gray-700 mb-2">🍽️ Danh sách món</h3>
                             <Table
-                                dataSource={[...order.items].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())}
+                                dataSource={[...order.items].sort((a, b) => {
+                                    // Món pending luôn lên đầu
+                                    if (a.status === 'pending' && b.status !== 'pending') return -1;
+                                    if (a.status !== 'pending' && b.status === 'pending') return 1;
+                                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                                })}
                                 columns={itemCols}
                                 rowKey="id"
                                 pagination={false}
                                 size="small"
                                 bordered
+                                rowClassName={(r) => {
+                                    if (r.status === 'pending') return '!bg-orange-50';
+                                    if (r.status === 'served') return 'opacity-50';
+                                    return '';
+                                }}
                             />
                         </div>
 
