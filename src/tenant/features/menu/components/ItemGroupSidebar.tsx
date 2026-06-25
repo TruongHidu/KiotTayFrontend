@@ -24,7 +24,7 @@ export const ItemGroupSidebar = ({
     isLoading,
 }: ItemGroupSidebarProps) => {
     return (
-        <div className="h-full flex flex-col bg-white border-r border-gray-200">
+        <div className="h-full flex flex-col bg-white md:border-r border-gray-200">
             <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                 <Text strong className="text-lg">Nhóm Món</Text>
                 <Button type="primary" icon={<PlusOutlined />} onClick={onAddGroup} size="small">

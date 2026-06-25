@@ -7,6 +7,8 @@ import { usePosCartStore } from '@/store/posCartStore';
 import { OrderDetailModal } from './OrderDetailModal';
 import type { Order } from '@/types';
 import { ShoppingOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { useFeatureFlag } from '@/auth/hooks/useFeatureFlag';
+import { FeatureCode } from '@/types';
 
 interface Props {
     open: boolean;
@@ -16,6 +18,7 @@ interface Props {
 export const POSDrawer = ({ open, onClose }: Props) => {
     const [activeTab, setActiveTab] = useState('takeaway');
     const [viewOrder, setViewOrder] = useState<Order | null>(null);
+    const hasTableManagement = useFeatureFlag(FeatureCode.TABLE_MANAGEMENT);
     
     const setServiceType = usePosCartStore(s => s.setServiceType);
     const setSelectedTableId = usePosCartStore(s => s.setSelectedTableId);
@@ -71,12 +74,12 @@ export const POSDrawer = ({ open, onClose }: Props) => {
                                     key: 'takeaway',
                                     label: <span className="font-semibold"><ShoppingOutlined /> Mang đi (Takeaway)</span>,
                                 },
-                                {
+                                ...(hasTableManagement ? [{
                                     key: 'dine_in',
                                     label: <span className="font-semibold"><AppstoreOutlined /> Tại bàn (Dine-in)</span>,
-                                },
+                                }] : []),
                                 // Hidden tab for ordering when a table is selected
-                                ...(selectedTableId ? [{
+                                ...(selectedTableId && hasTableManagement ? [{
                                     key: 'menu',
                                     label: <span className="font-semibold text-emerald-600">Thực đơn cho bàn</span>,
                                 }] : []),

@@ -34,6 +34,7 @@ export interface OrderItemPayload {
 export interface CreateOrderRequest {
     source_channel: 'cashier' | 'qr_static' | 'qr_table';
     service_type: ServiceType;
+    table_id?: string;
     customer_name?: string;
     customer_phone?: string;
     customer_reference?: string;
@@ -95,6 +96,7 @@ export interface Order {
     service_type_label?: string;
     status: OrderStatus;
     status_label: string;
+    table_id?: string | null;
     customer_name: string | null;
     customer_phone: string | null;
     customer_reference: string | null;

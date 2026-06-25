@@ -28,7 +28,7 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
                 navigate('/super-admin', { replace: true });
             } 
             // Nếu là Tenant mà vào nhầm trang Admin, cho về Portal
-            else if ([UserRole.OWNER, UserRole.MANAGER].includes(user.role as UserRole)) {
+            else if ([UserRole.OWNER, UserRole.MANAGER, UserRole.WAITER, UserRole.KITCHEN, UserRole.CASHIER].includes(user.role as UserRole)) {
                 navigate('/portal', { replace: true });
             } else {
                 navigate('/unauthorized', { replace: true });

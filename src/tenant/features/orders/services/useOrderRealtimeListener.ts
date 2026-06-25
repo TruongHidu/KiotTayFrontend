@@ -4,47 +4,12 @@
  * qua kênh Laravel Echo: `restaurant.{restaurant_id}`
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getEcho } from '@/lib/echoClient';
-import { antdNotification } from '@/lib/antdStatic';
-import { useNotificationStore, type OrderNotificationPayload } from '@/store/useNotificationStore';
+import type { OrderNotificationPayload } from '@/store/useNotificationStore';
 import { ORDER_KEYS } from '@/tenant/features/orders/services/order.hooks';
-
-// ─── Sound helper ─────────────────────────────────────────────────────────────
-
-const playNotificationSound = (level: 'default' | 'loud') => {
-    try {
-        const soundFile = level === 'loud'
-            ? '/sounds/order-loud.mp3'
-            : '/sounds/order-notify.mp3';
-
-        const audio = new Audio(soundFile);
-        audio.volume = level === 'loud' ? 1.0 : 0.6;
-        audio.play().catch(() => {
-            playBeepFallback(level);
-        });
-    } catch {
-        playBeepFallback(level);
-    }
-};
-
-const playBeepFallback = (level: 'default' | 'loud') => {
-    try {
-        const ctx = new AudioContext();
-        const oscillator = ctx.createOscillator();
-        const gainNode   = ctx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
-        oscillator.type            = 'sine';
-        oscillator.frequency.value = level === 'loud' ? 880 : 660;
-        gainNode.gain.value        = level === 'loud' ? 0.8 : 0.4;
-        oscillator.start();
-        oscillator.stop(ctx.currentTime + 0.3);
-    } catch {
-        // Thiết bị không hỗ trợ → bỏ qua
-    }
-};
+import { notifyFromOrderCreatedPayload } from '@/tenant/features/orders/utils/orderNotification';
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
@@ -58,18 +23,6 @@ export const useOrderRealtimeListener = ({
     enabled = true,
 }: UseOrderRealtimeListenerOptions) => {
     const queryClient = useQueryClient();
-
-    // FIX: Dùng useRef để giữ stable reference đến store actions
-    // → tránh useEffect chạy lại mỗi render khi Zustand trả về function mới
-    const storeRef = useRef(useNotificationStore.getState());
-
-    // Sync storeRef mỗi khi store cập nhật
-    useEffect(() => {
-        const unsub = useNotificationStore.subscribe((state) => {
-            storeRef.current = state;
-        });
-        return unsub;
-    }, []);
 
     useEffect(() => {
         if (!enabled || !restaurantId) {
@@ -112,42 +65,7 @@ export const useOrderRealtimeListener = ({
         channel.listen('.order.created', (payload: OrderNotificationPayload) => {
             console.info('[Realtime] 📦 Nhận event order.created:', payload);
 
-            const { incrementBadge, markProcessed, isProcessed, setLastNotification } =
-                storeRef.current;
-
-            const idempotencyKey = payload?.meta?.idempotency_key;
-
-            // Chống trùng lặp
-            if (!idempotencyKey || isProcessed(idempotencyKey)) {
-                console.info('[Realtime] Event bị bỏ qua (đã xử lý):', idempotencyKey);
-                return;
-            }
-            markProcessed(idempotencyKey);
-
-            const { notification, order_summary } = payload;
-
-            // Phát âm thanh
-            if (notification?.sound) {
-                playNotificationSound(notification.sound_level ?? 'default');
-            }
-
-            // Hiển thị Toast
-            antdNotification.open({
-                message: notification?.title ?? 'Đơn hàng mới!',
-                description: notification?.body ?? `Mã đơn: ${order_summary?.order_code}`,
-                placement: 'topRight',
-                duration: 8,
-                type: notification?.priority === 'high' ? 'warning' : 'info',
-                style: {
-                    borderLeft: '4px solid #059669',
-                },
-            });
-
-            // Tăng badge
-            incrementBadge(notification?.badge_delta ?? 1);
-
-            // Lưu notification mới nhất
-            setLastNotification(payload);
+            notifyFromOrderCreatedPayload(payload);
 
             // Trigger refresh danh sách đơn hàng
             queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
@@ -159,7 +77,7 @@ export const useOrderRealtimeListener = ({
             echo.leave(channelName);
         };
 
-    // FIX: Dependency array chỉ có restaurantId + enabled + queryClient
-    // → KHÔNG đưa Zustand actions vào dep array (chúng không stable)
+        // FIX: Dependency array chỉ có restaurantId + enabled + queryClient
+        // → KHÔNG đưa Zustand actions vào dep array (chúng không stable)
     }, [restaurantId, enabled, queryClient]);
 };

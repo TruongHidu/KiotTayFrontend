@@ -25,7 +25,7 @@ export type AvailabilityStatus = 'IN_STOCK' | 'OUT_OF_STOCK' | 'SUSPENDED';
 export interface Item {
     id: string;
     restaurant_id: string;
-    item_group_id: string;
+    item_group_id: string | null;
     name: string;
     description: string | null;
     image_url: string | null;
@@ -43,11 +43,11 @@ export interface Item {
 }
 
 export interface CreateItemRequest {
-    item_group_id: string;
+    item_group_id: string | null;
     name: string;
     item_type?: string;
     unit: string;
-    sale_price: number | string;
+    sale_price: number | string | null;
     availability_status: AvailabilityStatus;
     image?: File | null;
     description?: string;

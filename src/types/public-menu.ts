@@ -29,9 +29,21 @@ export interface PublicItemGroup {
 }
 
 
+export interface PublicTableInfo {
+    id: string;
+    name: string;
+    capacity: number;
+    status: string;
+    area?: { id: string; name: string } | null;
+}
+
 export interface PublicMenuResponse {
-    restaurant?: PublicRestaurant; // Backend might not be returning this yet based on the payload seen, marking optional
+    restaurant?: PublicRestaurant;
     item_groups: PublicItemGroup[];
+    /** Chỉ có khi type=qr_table */
+    table?: PublicTableInfo | null;
+    /** Đơn hàng đang mở của bàn (nếu có) */
+    active_order?: Order | null;
 }
 
 // ===== Cart Types =====

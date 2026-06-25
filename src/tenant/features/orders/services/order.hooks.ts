@@ -97,3 +97,23 @@ export const useCreatePayment = () => {
         },
     });
 };
+
+/**
+ * Gọi thêm món vào đơn hàng đang mở
+ */
+export const useAddOrderItems = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            orderId,
+            items,
+        }: {
+            orderId: string;
+            items: { item_id: string; quantity: number; note?: string }[];
+        }) => orderService.addItems(orderId, { items }),
+        onSuccess: (_, { orderId }) => {
+            qc.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
+            qc.invalidateQueries({ queryKey: ORDER_KEYS.detail(orderId) });
+        },
+    });
+};

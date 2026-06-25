@@ -9,6 +9,10 @@ import type {
     OrderListParams,
 } from '@/types';
 
+export interface AddOrderItemsRequest {
+    items: { item_id: string; quantity: number; note?: string }[];
+}
+
 // ---- Response wrappers ----
 
 export interface OrderApiResponse {
@@ -81,6 +85,15 @@ export const orderService = {
     ): Promise<PaymentApiResponse> =>
         apiClient
             .post<PaymentApiResponse>(`/tenant/orders/${orderId}/payments`, data)
+            .then((res) => res.data),
+
+    /**
+     * POST /api/tenant/orders/{id}/items
+     * Gọi thêm món vào đơn hàng đang mở
+     */
+    addItems: (orderId: string, data: AddOrderItemsRequest): Promise<OrderApiResponse> =>
+        apiClient
+            .post<OrderApiResponse>(`/tenant/orders/${orderId}/items`, data)
             .then((res) => res.data),
 
     /**

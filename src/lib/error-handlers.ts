@@ -2,15 +2,17 @@ import { AxiosError } from 'axios';
 
 export const getErrorMessage = (error: unknown): string => {
     if (error instanceof AxiosError) {
-        const message = error.response?.data?.message;
-        if (typeof message === 'string') {
-            return message;
-        }
-
         if (error.response?.data?.errors) {
             const errors = error.response.data.errors;
             const messages = Object.values(errors).flat();
-            return typeof messages[0] === 'string' ? messages[0] : 'Có lỗi xảy ra';
+            if (typeof messages[0] === 'string') {
+                return messages[0];
+            }
+        }
+
+        const message = error.response?.data?.message;
+        if (typeof message === 'string') {
+            return message;
         }
 
         return error.message || 'Có lỗi xảy ra';

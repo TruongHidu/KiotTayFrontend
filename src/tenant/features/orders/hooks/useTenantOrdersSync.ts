@@ -2,14 +2,14 @@ import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { App } from 'antd';
 import { getEcho } from '@/lib/echoClient';
-import { antdNotification } from '@/lib/antdStatic';
 import { ORDER_KEYS } from '../services/order.hooks';
 import { useHighlightStore } from '../stores/highlight.store';
+import { notifyNewOrder, notifyOrderItemsAdded } from '../utils/orderNotification';
 import type { Order, OrderItem } from '@/types';
 
 export const useTenantOrdersSync = (restaurantId: string | undefined) => {
     const queryClient = useQueryClient();
-    const { message, notification } = App.useApp();
+    const { message } = App.useApp();
 
     useEffect(() => {
         if (!restaurantId) return;
@@ -38,34 +38,11 @@ export const useTenantOrdersSync = (restaurantId: string | undefined) => {
             queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
             useHighlightStore.getState().addHighlight(orderData.id, 'NEW_ORDER');
 
-            try {
-                const audio = new Audio('/sounds/order-notify.mp3');
-                audio.volume = 0.8;
-                audio.play().catch((err) => {
-                    console.log('Trình duyệt chặn autoplay audio, dùng fallback:', err);
-                    try {
-                        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-                        if (AudioContextClass) {
-                            const ctx = new AudioContextClass();
-                            const osc = ctx.createOscillator();
-                            osc.connect(ctx.destination);
-                            osc.frequency.value = 660;
-                            osc.start();
-                            osc.stop(ctx.currentTime + 0.3);
-                        }
-                    } catch (fbErr) {
-                        console.log('Fallback audio bị lỗi:', fbErr);
-                    }
-                });
-            } catch (err) {}
-
-            antdNotification.open({
-                message: 'Đơn QR mới cần xác nhận!',
-                description: `Khách hàng vừa đặt đơn ${orderData.order_code || 'Không rõ mã'}. Vui lòng kiểm tra và xác nhận!`,
-                placement: 'topRight',
-                duration: 10,
-                type: 'info',
-                style: { borderLeft: '4px solid #059669' },
+            notifyNewOrder({
+                orderId: orderData.id,
+                orderCode: orderData.order_code,
+                title: 'Đơn QR mới!',
+                body: `Khách vừa đặt đơn ${orderData.order_code}`,
             });
         });
 
@@ -94,30 +71,24 @@ export const useTenantOrdersSync = (restaurantId: string | undefined) => {
 
             useHighlightStore.getState().addHighlight(e.order.id, 'NEW_ITEM');
 
-            const newCount = e.newItems?.length ?? 0;
-            antdNotification.open({
-                message: '🍽️ Khách vừa gọi thêm món!',
-                description: `Đơn ${e.order.order_code} có ${newCount > 0 ? `${newCount} món mới` : 'món mới được thêm vào'}. Vui lòng chuẩn bị!`,
-                placement: 'topRight',
-                duration: 8,
-                type: 'warning',
-                style: { borderLeft: '4px solid #f97316' },
+            notifyOrderItemsAdded({
+                orderId: e.order.id,
+                orderCode: e.order.order_code,
+                newItems: e.newItems,
             });
         });
 
         // ── Kitchen channel events ─────────────────────────────────────────────
 
-        // Lắng nghe đơn hàng mới (từ QR tĩnh hoặc khách hàng)
+        // Lắng nghe đơn hàng mới — chỉ đồng bộ dữ liệu, không báo toast (đã xử lý ở .NewQrOrder / .order.created)
         channel.listen('.OrderPlaced', (e: { order: Order }) => {
             queryClient.invalidateQueries({ queryKey: ORDER_KEYS.lists() });
 
-            if (e.order.source_channel === 'qr_static' || e.order.source_channel === 'qr_table') {
+            const isQrOrder =
+                e.order.source_channel === 'qr_static' || e.order.source_channel === 'qr_table';
+
+            if (isQrOrder) {
                 useHighlightStore.getState().addHighlight(e.order.id, 'NEW_ORDER');
-                notification.info({
-                    message: 'Đơn hàng mới từ mã QR',
-                    description: `Khách hàng vừa đặt đơn ${e.order.order_code}. Vui lòng kiểm tra!`,
-                    placement: 'topRight',
-                });
             }
         });
 
@@ -141,5 +112,5 @@ export const useTenantOrdersSync = (restaurantId: string | undefined) => {
             cashierChannel.stopListening('.OrderItemsAdded');
             echo.leave(cashierChannelName);
         };
-    }, [restaurantId, queryClient, message, notification]);
+    }, [restaurantId, queryClient, message]);
 };

@@ -13,6 +13,17 @@ const publicApi = axios.create({
 
 /**
  * GET /public/menu?public_token={token}&type={type}
+ *
+ * Backend trả về:
+ * {
+ *   success: true,
+ *   data: {
+ *     restaurant: {...},
+ *     item_groups: [...],
+ *     table: {...},          // chỉ khi type=qr_table
+ *     active_order: {...}    // đơn đang mở của bàn (nếu có)
+ *   }
+ * }
  */
 export const fetchPublicMenu = async (
     public_token: string,
@@ -21,11 +32,22 @@ export const fetchPublicMenu = async (
     const { data } = await publicApi.get('/public/menu', {
         params: { public_token, type },
     });
-    // Backend returns { success: true, data: [ ... ] } where data is the array of item groups.
-    // Wrap it in our PublicMenuResponse interface.
-    const itemGroups = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+
+    // Hỗ trợ 2 format backend:
+    // 1. { data: { item_groups: [], restaurant, table, active_order } }
+    // 2. { data: [] }  (legacy — chỉ item_groups trả về mảng trực tiếp)
+    const payload = data.data;
+
+    if (Array.isArray(payload)) {
+        // Legacy format: data là mảng item_groups
+        return { item_groups: payload };
+    }
+
     return {
-        item_groups: itemGroups
+        restaurant: payload?.restaurant ?? undefined,
+        item_groups: Array.isArray(payload?.item_groups) ? payload.item_groups : [],
+        table: payload?.table ?? null,
+        active_order: payload?.active_order ?? null,
     };
 };
 

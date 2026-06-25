@@ -16,8 +16,10 @@ import { useAuthStore } from '@/store/auth.store';
 import { useLogout } from '@/auth/services/auth.hooks';
 import { useFeatureFlag } from '@/auth/hooks/useFeatureFlag';
 import { FeatureCode } from '@/types';
+import { UserRole } from '@/types/auth';
 import type { MenuProps } from 'antd';
 import { useOrderRealtimeListener } from '@/tenant/features/orders/services/useOrderRealtimeListener';
+import { useTenantOrdersSync } from '@/tenant/features/orders/hooks/useTenantOrdersSync';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
 const { Header, Sider, Content } = Layout;
@@ -40,6 +42,7 @@ export const TenantLayout = () => {
         restaurantId,
         enabled: !!restaurantId,
     });
+    useTenantOrdersSync(restaurantId);
 
     // ── Reset badge khi người dùng vào trang danh sách đơn hàng ──────────
     useEffect(() => {
@@ -51,6 +54,11 @@ export const TenantLayout = () => {
     const hasMenuManagement = useFeatureFlag(FeatureCode.MENU_MANAGEMENT);
     const hasTableManagement = useFeatureFlag(FeatureCode.TABLE_MANAGEMENT);
     const hasStaffManagement = useFeatureFlag(FeatureCode.STAFF_MANAGEMENT);
+    const hasPosQuickOrder = useFeatureFlag(FeatureCode.POS_QUICK_ORDER);
+
+    const userRole = user?.role as UserRole;
+    const isOwner = userRole === UserRole.OWNER;
+    const isOwnerOrManager = isOwner || userRole === UserRole.MANAGER;
 
     const menuItems: MenuProps['items'] = [
         {
@@ -59,13 +67,13 @@ export const TenantLayout = () => {
             label: 'Tổng quan',
             onClick: () => navigate('/portal'),
         },
-        hasMenuManagement ? {
+        hasMenuManagement && isOwnerOrManager ? {
             key: '/portal/menu',
             icon: <ShopOutlined />,
             label: 'Thực đơn',
             onClick: () => navigate('/portal/menu'),
         } : null,
-        {
+        hasPosQuickOrder ? {
             key: '/portal/orders',
             // Hiển thị badge đỏ khi có đơn hàng mới chưa xem
             icon: (
@@ -102,8 +110,8 @@ export const TenantLayout = () => {
                 </span>
             ),
             onClick: () => navigate('/portal/orders'),
-        },
-        hasTableManagement ? {
+        } : null,
+        hasTableManagement && isOwner ? {
             key: '/portal/tables-group',
             icon: <TableOutlined />,
             label: 'Quản lý bàn',
@@ -120,13 +128,13 @@ export const TenantLayout = () => {
                 },
             ],
         } : null,
-        hasStaffManagement ? {
+        hasStaffManagement && isOwnerOrManager ? {
             key: '/portal/staff',
             icon: <TeamOutlined />,
             label: 'Nhân viên',
             onClick: () => navigate('/portal/staff'),
         } : null,
-        {
+        isOwnerOrManager ? {
             key: '/portal/settings-group',
             icon: <SettingOutlined />,
             label: 'Cài đặt',
@@ -137,7 +145,7 @@ export const TenantLayout = () => {
                     onClick: () => navigate('/portal/settings'),
                 },
             ],
-        },
+        } : null,
     ].filter(Boolean) as MenuProps['items'];
 
     const userMenuItems: MenuProps['items'] = [

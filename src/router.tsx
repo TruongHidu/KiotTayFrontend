@@ -47,6 +47,7 @@ import { RestaurantTablePage } from '@/tenant/features/tables/pages/RestaurantTa
 import { StaffListPage } from '@/tenant/features/staff/pages/StaffListPage';
 import { PaymentMethodSettingsPage } from '@/tenant/features/settings/pages/PaymentMethodSettingsPage';
 import { FeatureGuard } from '@/auth/components/FeatureGuard';
+import { RoleGuard } from '@/auth/components/RoleGuard';
 import { FeatureCode } from '@/types';
 
 export const router = createBrowserRouter([
@@ -105,7 +106,7 @@ export const router = createBrowserRouter([
     {
         path: '/portal',
         element: (
-            <ProtectedRoute allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+            <ProtectedRoute allowedRoles={[UserRole.OWNER, UserRole.MANAGER, UserRole.WAITER, UserRole.KITCHEN, UserRole.CASHIER]}>
                 <TenantLayout />
             </ProtectedRoute>
         ),
@@ -117,33 +118,41 @@ export const router = createBrowserRouter([
             {
                 path: 'menu',
                 element: (
-                    <FeatureGuard feature={FeatureCode.MENU_MANAGEMENT} fallback={<UnauthorizedPage />}>
-                        <MenuManagementPage />
-                    </FeatureGuard>
+                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                        <FeatureGuard feature={FeatureCode.MENU_MANAGEMENT} fallback={<UnauthorizedPage />}>
+                            <MenuManagementPage />
+                        </FeatureGuard>
+                    </RoleGuard>
                 ),
             },
             {
                 path: 'table-areas',
                 element: (
-                    <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
-                        <TableAreaPage />
-                    </FeatureGuard>
+                    <RoleGuard allowedRoles={[UserRole.OWNER]}>
+                        <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
+                            <TableAreaPage />
+                        </FeatureGuard>
+                    </RoleGuard>
                 ),
             },
             {
                 path: 'restaurant-tables',
                 element: (
-                    <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
-                        <RestaurantTablePage />
-                    </FeatureGuard>
+                    <RoleGuard allowedRoles={[UserRole.OWNER]}>
+                        <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
+                            <RestaurantTablePage />
+                        </FeatureGuard>
+                    </RoleGuard>
                 ),
             },
             {
                 path: 'staff',
                 element: (
-                    <FeatureGuard feature={FeatureCode.STAFF_MANAGEMENT} fallback={<UpgradeRequiredPage />}>
-                        <StaffListPage />
-                    </FeatureGuard>
+                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                        <FeatureGuard feature={FeatureCode.STAFF_MANAGEMENT} fallback={<UpgradeRequiredPage />}>
+                            <StaffListPage />
+                        </FeatureGuard>
+                    </RoleGuard>
                 ),
             },
             {
@@ -164,7 +173,11 @@ export const router = createBrowserRouter([
             },
             {
                 path: 'settings',
-                element: <PaymentMethodSettingsPage />,
+                element: (
+                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                        <PaymentMethodSettingsPage />
+                    </RoleGuard>
+                ),
             },
         ],
     },

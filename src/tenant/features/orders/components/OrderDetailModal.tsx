@@ -1,26 +1,22 @@
 import { useState } from 'react';
 import {
     Modal, Spin, Divider, Tag, Button, Descriptions, Table,
-    message, Space,
+    message,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
-    ClockCircleOutlined,
     CheckCircleOutlined,
     CloseCircleOutlined,
     DollarOutlined,
+    PlusCircleOutlined,
 } from '@ant-design/icons';
 import { useOrder, useUpdateOrderStatus, useCreatePayment } from '../services/order.hooks';
+import { useTableNameMap } from '../hooks/useTableNameMap';
+import { getOrderServiceDisplay } from '../utils/orderDisplay';
 import { PaymentModal } from './PaymentModal';
-import type {
-    OrderItem,
-    OrderStatus,
-    Payment,
-} from '@/types';
-import {
-    ORDER_STATUS_CONFIG,
-    SERVICE_TYPE_CONFIG,
-} from '@/types';
+import { AddItemsDrawer } from './AddItemsDrawer';
+import type { OrderStatus, Payment } from '@/types';
+import { ORDER_STATUS_CONFIG } from '@/types';
 
 const fmt = (val: string | number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
@@ -61,6 +57,8 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
     const { data, isLoading } = useOrder(orderId, open);
     const { mutate: updateStatus, isPending: updatingStatus } = useUpdateOrderStatus();
     const [payModalOpen, setPayModalOpen] = useState(false);
+    const [addItemsOpen, setAddItemsOpen] = useState(false);
+    const tableNames = useTableNameMap();
 
     const order = data?.data;
 
@@ -74,40 +72,7 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
         );
     };
 
-    // Item columns
-    const itemCols: ColumnsType<OrderItem> = [
-        {
-            title: 'Món', dataIndex: 'item_name',
-            render: (name: string, r) => {
-                const isNew = order && new Date(r.created_at).getTime() - new Date(order.created_at).getTime() > 5000;
-                const isPending = r.status === 'pending';
-                return (
-                    <div>
-                        <div className="font-medium text-gray-800 flex items-center gap-2 flex-wrap">
-                            {name}
-                            {isPending && (
-                                <Tag color="orange" className="!m-0 text-[10px] leading-3 px-1.5 py-0.5 animate-pulse">
-                                    🆕 Chờ nấu
-                                </Tag>
-                            )}
-                            {isNew && !isPending && (
-                                <Tag color="blue" className="!m-0 text-[10px] leading-3 px-1.5 py-0.5">Mới gọi thêm</Tag>
-                            )}
-                        </div>
-                        {r.note && <div className="text-xs text-gray-400 italic mt-0.5">📝 {r.note}</div>}
-                    </div>
-                );
-            },
-        },
-        { title: 'SL', dataIndex: 'quantity', width: 60, align: 'center',
-          render: (q: number) => <span className="font-bold">{q}</span> },
-        { title: 'Đơn giá', dataIndex: 'unit_price', width: 120, align: 'right',
-          render: (p: string) => fmt(p) },
-        { title: 'Thành tiền', dataIndex: 'line_total', width: 130, align: 'right',
-          render: (s: string) => <span className="font-bold text-emerald-600">{fmt(s)}</span> },
-    ];
-
-    // Payment columns
+    // Payment columns (history table still uses antd Table via inline if needed — kept for payments only)
     const paymentCols: ColumnsType<Payment> = [
         { title: 'Phương thức', dataIndex: 'method',
           render: (m: string) => {
@@ -124,7 +89,7 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
     ];
 
     const statusCfg = order ? ORDER_STATUS_CONFIG[order.status] : null;
-    const svcCfg = order ? SERVICE_TYPE_CONFIG[order.service_type] : null;
+    const serviceDisplay = order ? getOrderServiceDisplay(order, tableNames) : null;
     const nextStatuses = order ? (NEXT_STATUSES[order.status] || []) : [];
     const payments = order?.payments || [];
     const isPaid = payments.some(p => p.status === 'PAID');
@@ -137,7 +102,8 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                 open={open}
                 onCancel={onClose}
                 footer={null}
-                width={780}
+                width={860}
+                className="order-detail-modal"
                 title={
                     order ? (
                         <div className="flex items-center gap-3">
@@ -152,9 +118,9 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                                     {statusCfg.label}
                                 </span>
                             )}
-                            {svcCfg && (
-                                <Tag className="rounded-full text-xs">
-                                    {svcCfg.icon} {svcCfg.label}
+                            {serviceDisplay && (
+                                <Tag className={`rounded-full text-xs font-semibold border-0 ${serviceDisplay.badgeClass}`}>
+                                    {serviceDisplay.icon} {serviceDisplay.label}
                                 </Tag>
                             )}
                         </div>
@@ -189,11 +155,13 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                                     📞 {order.customer_phone}
                                 </Descriptions.Item>
                             )}
-                            {order.customer_reference && (
-                                <Descriptions.Item label="Bàn/Tham chiếu">
-                                    {order.customer_reference}
-                                </Descriptions.Item>
-                            )}
+                            <Descriptions.Item label="Loại đơn">
+                                {serviceDisplay && (
+                                    <span className="font-semibold">
+                                        {serviceDisplay.icon} {serviceDisplay.label}
+                                    </span>
+                                )}
+                            </Descriptions.Item>
                             {order.note && (
                                 <Descriptions.Item label="Ghi chú tổng" span={2}>
                                     📝 <span className="italic text-gray-600">{order.note}</span>
@@ -203,25 +171,49 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
 
                         {/* Items */}
                         <div>
-                            <h3 className="font-bold text-gray-700 mb-2">🍽️ Danh sách món</h3>
-                            <Table
-                                dataSource={[...order.items].sort((a, b) => {
-                                    // Món pending luôn lên đầu
-                                    if (a.status === 'pending' && b.status !== 'pending') return -1;
-                                    if (a.status !== 'pending' && b.status === 'pending') return 1;
-                                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-                                })}
-                                columns={itemCols}
-                                rowKey="id"
-                                pagination={false}
-                                size="small"
-                                bordered
-                                rowClassName={(r) => {
-                                    if (r.status === 'pending') return '!bg-orange-50';
-                                    if (r.status === 'served') return 'opacity-50';
-                                    return '';
-                                }}
-                            />
+                            <h3 className="font-bold text-gray-700 mb-3 text-base">Danh sách món</h3>
+                            <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                                {[...order.items]
+                                    .sort((a, b) => {
+                                        if (a.status === 'pending' && b.status !== 'pending') return -1;
+                                        if (a.status !== 'pending' && b.status === 'pending') return 1;
+                                        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                                    })
+                                    .map((item) => {
+                                        const isPending = item.status === 'pending';
+                                        const isNew =
+                                            new Date(item.created_at).getTime() -
+                                                new Date(order.created_at).getTime() >
+                                            5000;
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                className={`flex items-start justify-between gap-3 p-3 rounded-xl border
+                                                    ${isPending ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-100'}`}
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
+                                                        <span className="text-emerald-700 font-bold">{item.quantity}×</span>
+                                                        {item.item_name}
+                                                        {isPending && (
+                                                            <Tag color="orange" className="!m-0 text-[10px]">Chờ nấu</Tag>
+                                                        )}
+                                                        {isNew && !isPending && (
+                                                            <Tag color="blue" className="!m-0 text-[10px]">Gọi thêm</Tag>
+                                                        )}
+                                                    </div>
+                                                    {item.note && (
+                                                        <p className="text-xs text-gray-500 italic mt-1 mb-0">📝 {item.note}</p>
+                                                    )}
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <div className="font-bold text-emerald-600">{fmt(item.line_total)}</div>
+                                                    <div className="text-xs text-gray-400">{fmt(item.unit_price)}/món</div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                            </div>
                         </div>
 
                         {/* Summary */}
@@ -279,56 +271,81 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                         )}
 
                         {/* Actions */}
-                        <div className="flex items-center justify-between gap-3 pt-2 border-t border-gray-100">
-                            {/* Status transition */}
-                            <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-500">Chuyển sang:</span>
-                                <Space.Compact>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-gray-200">
+                            {nextStatuses.length > 0 ? (
+                                <div className="flex flex-wrap gap-2 flex-1">
                                     {nextStatuses.map((s) => {
                                         const cfg = ORDER_STATUS_CONFIG[s];
                                         if (!cfg) return null;
-                                        const icon = (s === 'CANCELLED' || s === 'cancelled')
+                                        const isCancel = s === 'CANCELLED' || s === 'cancelled';
+                                        const icon = isCancel
                                             ? <CloseCircleOutlined />
-                                            : (s === 'COMPLETED' || s === 'paid')
-                                            ? <CheckCircleOutlined />
-                                            : <ClockCircleOutlined />;
+                                            : <CheckCircleOutlined />;
                                         return (
                                             <Button
                                                 key={s}
-                                                size="small"
+                                                size="large"
                                                 icon={icon}
                                                 loading={updatingStatus}
-                                                danger={s === 'CANCELLED' || s === 'cancelled'}
+                                                danger={isCancel}
                                                 onClick={() => handleStatusChange(s)}
+                                                className={
+                                                    !isCancel
+                                                        ? '!font-semibold'
+                                                        : undefined
+                                                }
                                                 style={
-                                                    (s !== 'CANCELLED' && s !== 'cancelled')
-                                                        ? { borderColor: cfg?.color, color: cfg?.color }
+                                                    !isCancel
+                                                        ? {
+                                                              borderColor: cfg.color,
+                                                              color: cfg.color,
+                                                              minWidth: 140,
+                                                          }
                                                         : undefined
                                                 }
                                             >
-                                                {cfg?.label}
+                                                {cfg.label}
                                             </Button>
                                         );
                                     })}
-                                </Space.Compact>
-                            </div>
+                                </div>
+                            ) : (
+                                <div />
+                            )}
 
-                            {/* Pay button */}
-                            {remaining > 0 && (
-                                <Button
-                                    type="primary"
-                                    icon={<DollarOutlined />}
-                                    className="!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600"
-                                    onClick={() => setPayModalOpen(true)}
-                                >
-                                    Thanh toán ({fmt(remaining)})
-                                </Button>
-                            )}
-                            {remaining <= 0 && (order.status !== 'CANCELLED' && order.status !== 'cancelled') && (
-                                <Tag color="success" className="px-3 py-1 text-sm font-medium">
-                                    ✅ Đã thanh toán đủ
-                                </Tag>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {/* Gọi thêm món — chỉ hiện khi đơn chưa được huỷ hoặc đã thanh toán hết */}
+                                {order.status !== 'cancelled' && order.status !== 'CANCELLED' && order.status !== 'paid' && (
+                                    <Button
+                                        size="large"
+                                        icon={<PlusCircleOutlined />}
+                                        onClick={() => setAddItemsOpen(true)}
+                                        className="!font-semibold !border-emerald-500 !text-emerald-600 hover:!bg-emerald-50"
+                                    >
+                                        Gọi thêm món
+                                    </Button>
+                                )}
+
+                                {remaining > 0 ? (
+                                    <Button
+                                        type="primary"
+                                        size="large"
+                                        icon={<DollarOutlined />}
+                                        className="!bg-emerald-600 hover:!bg-emerald-700 !border-emerald-600 !font-bold !h-12 !px-8"
+                                        onClick={() => setPayModalOpen(true)}
+                                    >
+                                        Thanh toán {fmt(remaining)}
+                                    </Button>
+                                ) : (
+                                    remaining <= 0 &&
+                                    order.status !== 'CANCELLED' &&
+                                    order.status !== 'cancelled' && (
+                                        <Tag color="success" className="px-4 py-2 text-sm font-medium !m-0">
+                                            Đã thanh toán đủ
+                                        </Tag>
+                                    )
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -343,6 +360,16 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                     finalAmount={remaining > 0 ? remaining : parseFloat(order.final_amount)}
                     onSuccess={() => setPayModalOpen(false)}
                     onCancel={() => setPayModalOpen(false)}
+                />
+            )}
+
+            {/* Add items drawer */}
+            {order && (
+                <AddItemsDrawer
+                    open={addItemsOpen}
+                    orderId={order.id}
+                    orderCode={order.order_code}
+                    onClose={() => setAddItemsOpen(false)}
                 />
             )}
         </>

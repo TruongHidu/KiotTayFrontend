@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Plus, Minus, ChefHat, ShoppingCart, User, Phone, FileText } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ChefHat, ShoppingCart, User, Phone, FileText, ClipboardList } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import { useCartStore } from '@/store/cartStore';
+import type { Order } from '@/types/public-menu';
 
 interface CartSheetProps {
     open: boolean;
@@ -10,9 +11,11 @@ interface CartSheetProps {
     onPlaceOrder: (name: string, phone: string, note: string) => void;
     isPlacingOrder: boolean;
     isAddingToOrder?: boolean;
+    /** Đơn hàng đang mở của bàn (Collaborative Ordering) */
+    activeOrder?: Order | null;
 }
 
-export const CartSheet = ({ open, onClose, onPlaceOrder, isPlacingOrder, isAddingToOrder = false }: CartSheetProps) => {
+export const CartSheet = ({ open, onClose, onPlaceOrder, isPlacingOrder, isAddingToOrder = false, activeOrder }: CartSheetProps) => {
     const { items, totalPrice, updateQuantity, removeItem } = useCartStore();
 
     const [customerName, setCustomerName] = useState('');
@@ -131,14 +134,25 @@ export const CartSheet = ({ open, onClose, onPlaceOrder, isPlacingOrder, isAddin
                             {/* Footer */}
                             {items.length > 0 && (
                                 <div className="border-t border-gray-100 px-5 py-5 space-y-4 bg-white/80 backdrop-blur-md">
+                                    {/* Active order info banner (Table Ordering) */}
+                                    {activeOrder && (
+                                        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                                            <ClipboardList size={15} className="text-amber-500 shrink-0" />
+                                            <p className="text-xs text-amber-700">
+                                                <strong>Đang gọi thêm</strong> cho đơn #{activeOrder.id?.slice(-6).toUpperCase()}
+                                            </p>
+                                        </div>
+                                    )}
+
                                     <div className="space-y-3 mb-4">
-                                        {!isAddingToOrder && (
+                                        {/* Ẩn form tên/SĐT nếu đang gọi thêm */}
+                                        {!isAddingToOrder && !activeOrder && (
                                             <>
                                                 <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
                                                     <User size={16} className="text-gray-400" />
-                                                    <input 
-                                                        type="text" 
-                                                        placeholder="Tên của bạn (Tùy chọn)" 
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Tên của bạn (Tùy chọn)"
                                                         className="bg-transparent border-none outline-none w-full text-sm text-gray-700"
                                                         value={customerName}
                                                         onChange={(e) => setCustomerName(e.target.value)}
@@ -146,9 +160,9 @@ export const CartSheet = ({ open, onClose, onPlaceOrder, isPlacingOrder, isAddin
                                                 </div>
                                                 <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
                                                     <Phone size={16} className="text-gray-400" />
-                                                    <input 
-                                                        type="tel" 
-                                                        placeholder="Số điện thoại (Tùy chọn)" 
+                                                    <input
+                                                        type="tel"
+                                                        placeholder="Số điện thoại (Tùy chọn)"
                                                         className="bg-transparent border-none outline-none w-full text-sm text-gray-700"
                                                         value={customerPhone}
                                                         onChange={(e) => setCustomerPhone(e.target.value)}
@@ -158,9 +172,9 @@ export const CartSheet = ({ open, onClose, onPlaceOrder, isPlacingOrder, isAddin
                                         )}
                                         <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
                                             <FileText size={16} className="text-gray-400" />
-                                            <input 
-                                                type="text" 
-                                                placeholder="Ghi chú cho bếp (Tùy chọn)" 
+                                            <input
+                                                type="text"
+                                                placeholder="Ghi chú cho bếp (Tùy chọn)"
                                                 className="bg-transparent border-none outline-none w-full text-sm text-gray-700"
                                                 value={orderNote}
                                                 onChange={(e) => setOrderNote(e.target.value)}
@@ -179,9 +193,9 @@ export const CartSheet = ({ open, onClose, onPlaceOrder, isPlacingOrder, isAddin
                                         className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-2xl py-4 font-bold text-base flex items-center justify-center gap-3 transition-all shadow-lg shadow-orange-200 disabled:opacity-70 disabled:cursor-not-allowed"
                                     >
                                         <ChefHat size={20} />
-                                        {isPlacingOrder 
-                                            ? 'Đang gửi bếp...' 
-                                            : (isAddingToOrder ? 'Xác nhận gọi thêm' : '🔥 Gửi Bếp (Đặt món)')}
+                                        {isPlacingOrder
+                                            ? 'Đang gửi bếp...'
+                                            : (isAddingToOrder || activeOrder ? 'Xác nhận gọi thêm 🔥' : '🔥 Gửi Bếp (Đặt món)')}
                                     </motion.button>
                                 </div>
                             )}

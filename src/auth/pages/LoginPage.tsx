@@ -18,7 +18,7 @@ export const LoginPage = () => {
         if (isAuthenticated && user) {
             if (user.role === 'SUPER_ADMIN') {
                 navigate('/super-admin');
-            } else if (user.role === 'OWNER' || user.role === 'MANAGER') {
+            } else if (['OWNER', 'MANAGER', 'WAITER', 'KITCHEN', 'CASHIER'].includes(user.role)) {
                 navigate('/portal');
             } else {
                 navigate('/');
@@ -32,7 +32,7 @@ export const LoginPage = () => {
                 const userRole = response.user.role;
                 if (userRole === 'SUPER_ADMIN') {
                     navigate('/super-admin');
-                } else if (userRole === 'OWNER' || userRole === 'MANAGER') {
+                } else if (['OWNER', 'MANAGER', 'WAITER', 'KITCHEN', 'CASHIER'].includes(userRole)) {
                     navigate('/portal');
                 } else {
                     navigate('/');
