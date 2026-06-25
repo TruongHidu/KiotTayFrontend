@@ -14,6 +14,7 @@ import { ProtectedRoute } from '@/auth/pages/ProtectedRoute';
 // Errors
 import { NotFoundPage } from '@/pages/errors/NotFoundPage';
 import { UnauthorizedPage } from '@/pages/errors/UnauthorizedPage';
+import { UpgradeRequiredPage } from '@/pages/errors/UpgradeRequiredPage';
 
 // Public Landing
 import { PublicHomePage } from '@/pages/PublicHomePage';
@@ -34,13 +35,19 @@ import { PackageEditPage } from '@/super-admin/features/packages/pages/PackageEd
 
 // Tenant Zone
 import { TenantDashboard } from '@/tenant/pages/TenantDashboard';
+import { OrderListPage } from '@/tenant/features/orders/pages/OrderListPage';
 
 // Public Menu Zone
 import { MenuPage } from '@/public-menu/features/menu/pages/MenuPage';
 import { OrderTrackingPage } from '@/public-menu/features/menu/pages/OrderTrackingPage';
 
 import { MenuManagementPage } from '@/tenant/features/menu/pages/MenuManagementPage';
+import { TableAreaPage } from '@/tenant/features/tables/pages/TableAreaPage';
+import { RestaurantTablePage } from '@/tenant/features/tables/pages/RestaurantTablePage';
+import { StaffListPage } from '@/tenant/features/staff/pages/StaffListPage';
+import { PaymentMethodSettingsPage } from '@/tenant/features/settings/pages/PaymentMethodSettingsPage';
 import { FeatureGuard } from '@/auth/components/FeatureGuard';
+import { RoleGuard } from '@/auth/components/RoleGuard';
 import { FeatureCode } from '@/types';
 
 export const router = createBrowserRouter([
@@ -99,7 +106,7 @@ export const router = createBrowserRouter([
     {
         path: '/portal',
         element: (
-            <ProtectedRoute allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+            <ProtectedRoute allowedRoles={[UserRole.OWNER, UserRole.MANAGER, UserRole.WAITER, UserRole.KITCHEN, UserRole.CASHIER]}>
                 <TenantLayout />
             </ProtectedRoute>
         ),
@@ -111,26 +118,66 @@ export const router = createBrowserRouter([
             {
                 path: 'menu',
                 element: (
-                    <FeatureGuard feature={FeatureCode.MENU_MANAGEMENT} fallback={<UnauthorizedPage />}>
-                        <MenuManagementPage />
-                    </FeatureGuard>
+                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                        <FeatureGuard feature={FeatureCode.MENU_MANAGEMENT} fallback={<UnauthorizedPage />}>
+                            <MenuManagementPage />
+                        </FeatureGuard>
+                    </RoleGuard>
                 ),
             },
             {
-                path: 'tables',
+                path: 'table-areas',
                 element: (
-                    <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
-                        <div>Trang quản lý bàn & QR (Coming soon)</div>
-                    </FeatureGuard>
+                    <RoleGuard allowedRoles={[UserRole.OWNER]}>
+                        <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
+                            <TableAreaPage />
+                        </FeatureGuard>
+                    </RoleGuard>
+                ),
+            },
+            {
+                path: 'restaurant-tables',
+                element: (
+                    <RoleGuard allowedRoles={[UserRole.OWNER]}>
+                        <FeatureGuard feature={FeatureCode.TABLE_MANAGEMENT} fallback={<UnauthorizedPage />}>
+                            <RestaurantTablePage />
+                        </FeatureGuard>
+                    </RoleGuard>
+                ),
+            },
+            {
+                path: 'staff',
+                element: (
+                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                        <FeatureGuard feature={FeatureCode.STAFF_MANAGEMENT} fallback={<UpgradeRequiredPage />}>
+                            <StaffListPage />
+                        </FeatureGuard>
+                    </RoleGuard>
                 ),
             },
             {
                 path: 'orders',
-                element: <div>Trang quản lý đơn hàng (Coming soon)</div>,
+                children: [
+                    {
+                        index: true,
+                        element: (
+                            <FeatureGuard
+                                feature={FeatureCode.POS_QUICK_ORDER}
+                                fallback={<UnauthorizedPage />}
+                            >
+                                <OrderListPage />
+                            </FeatureGuard>
+                        ),
+                    },
+                ],
             },
             {
                 path: 'settings',
-                element: <div>Trang cài đặt nhà hàng (Coming soon)</div>,
+                element: (
+                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                        <PaymentMethodSettingsPage />
+                    </RoleGuard>
+                ),
             },
         ],
     },

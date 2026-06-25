@@ -1,7 +1,11 @@
-import { Table, Button, Space, Tag, Image, Popconfirm, Typography } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { useState, useMemo } from 'react';
+import { Table, Button, Space, Tag, Image, Popconfirm, Typography, Dropdown, Segmented } from 'antd';
+import { EditOutlined, DeleteOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
 import type { Item, ItemGroup } from '@/types';
+import { FeatureCode } from '@/types';
 import type { ColumnsType } from 'antd/es/table';
+import type { MenuProps } from 'antd';
+import { useFeatureFlag } from '@/auth/hooks/useFeatureFlag';
 
 const { Text } = Typography;
 
@@ -9,10 +13,12 @@ interface ItemTableProps {
     items: Item[];
     itemGroups: ItemGroup[];
     isLoading: boolean;
-    onAddItem: () => void;
+    onAddItem: (type: string) => void;
     onEditItem: (item: Item) => void;
     onDeleteItem: (id: string) => void;
     selectedGroupName?: string;
+    typeFilter: string;
+    onSetTypeFilter: (type: string) => void;
 }
 
 export const ItemTable = ({
@@ -22,14 +28,51 @@ export const ItemTable = ({
     onAddItem,
     onEditItem,
     onDeleteItem,
-    selectedGroupName
+    selectedGroupName,
+    typeFilter,
+    onSetTypeFilter
 }: ItemTableProps) => {
     
     // Helper to get group name
-    const getGroupName = (groupId: string) => {
+    const getGroupName = (groupId: string | null) => {
+        if (!groupId) return 'Nguyên liệu / Khác';
         const group = itemGroups.find(g => g.id === groupId);
         return group ? group.name : 'Unknown';
     };
+
+    const handleMenuClick: MenuProps['onClick'] = (e) => {
+        onAddItem(e.key);
+    };
+
+    const hasInventoryManagement = useFeatureFlag(FeatureCode.INVENTORY_MANAGEMENT);
+
+    const menuItems = [
+        {
+            label: 'Thêm hàng hóa',
+            key: 'MENU_ITEM',
+            icon: <PlusOutlined />,
+        },
+        {
+            label: hasInventoryManagement ? 'Thêm hàng chế biến' : 'Thêm hàng chế biến (Cần nâng cấp gói)',
+            key: 'INGREDIENT',
+            icon: <PlusOutlined />,
+            disabled: !hasInventoryManagement,
+        }
+    ];
+
+    const addItemsMenuProps: MenuProps = {
+        items: menuItems,
+        onClick: handleMenuClick,
+    };
+
+    const filterOptions = [
+        { label: 'Tất cả', value: 'ALL' },
+        { label: 'Hàng hóa', value: 'MENU_ITEM' },
+    ];
+    
+    if (hasInventoryManagement) {
+        filterOptions.push({ label: 'Nguyên liệu', value: 'INGREDIENT' });
+    }
 
     const columns: ColumnsType<Item> = [
         {
@@ -53,6 +96,22 @@ export const ItemTable = ({
                     <div className="text-xs text-gray-500">{getGroupName(record.item_group_id)}</div>
                 </div>
             )
+        },
+        {
+            title: 'Loại món',
+            dataIndex: 'item_type',
+            key: 'item_type',
+            render: (type: string) => {
+                if (type === 'INGREDIENT') {
+                    return <Tag color="purple">Nguyên liệu</Tag>;
+                }
+                return <Tag color="blue">Hàng hóa</Tag>;
+            },
+            filters: [
+                { text: 'Hàng hóa', value: 'MENU_ITEM' },
+                { text: 'Nguyên liệu', value: 'INGREDIENT' },
+            ],
+            onFilter: (value, record) => record.item_type === value,
         },
         {
             title: 'Giá bán',
@@ -133,13 +192,30 @@ export const ItemTable = ({
 
     return (
         <div className="bg-white p-4 h-full flex flex-col">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">
-                    {selectedGroupName ? `Danh sách món: ${selectedGroupName}` : 'Tất cả món ăn'}
-                </h2>
-                <Button type="primary" icon={<PlusOutlined />} onClick={onAddItem}>
-                    Thêm Món Mới
-                </Button>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                <Space direction="vertical" size="small" className="w-full sm:w-auto overflow-hidden">
+                    <h2 className="text-xl font-semibold truncate">
+                        {selectedGroupName ? `Danh sách món: ${selectedGroupName}` : 'Tất cả món ăn'}
+                    </h2>
+                    {hasInventoryManagement && (
+                        <div className="overflow-x-auto w-full pb-1">
+                            <Segmented
+                                options={filterOptions}
+                                value={typeFilter}
+                                onChange={(value) => onSetTypeFilter(value as string)}
+                            />
+                        </div>
+                    )}
+                </Space>
+                <Dropdown menu={addItemsMenuProps} placement="bottomRight" trigger={['click']}>
+                    <Button type="primary" className="flex-shrink-0">
+                        <Space>
+                            <PlusOutlined />
+                            Thêm mới
+                            <DownOutlined />
+                        </Space>
+                    </Button>
+                </Dropdown>
             </div>
             
             <div className="flex-1 overflow-auto">
@@ -149,7 +225,7 @@ export const ItemTable = ({
                     rowKey="id"
                     loading={isLoading}
                     pagination={{ pageSize: 10 }}
-                    scroll={{ y: 'calc(100vh - 280px)' }}
+                    scroll={{ x: 'max-content', y: 'calc(100vh - 350px)' }}
                 />
             </div>
         </div>

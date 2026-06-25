@@ -56,11 +56,17 @@ export const menuService = {
 
     createItem: (data: CreateItemRequest) => {
         const formData = new FormData();
-        formData.append('item_group_id', data.item_group_id);
+        
+        if (data.item_group_id) formData.append('item_group_id', data.item_group_id);
+        
         formData.append('name', data.name);
         formData.append('item_type', data.item_type || 'MENU_ITEM');
         formData.append('unit', data.unit);
-        formData.append('sale_price', data.sale_price.toString());
+        
+        if (data.sale_price !== null && data.sale_price !== undefined) {
+            formData.append('sale_price', data.sale_price.toString());
+        }
+
         formData.append('availability_status', data.availability_status);
         
         if (data.image) formData.append('image', data.image);
@@ -85,7 +91,9 @@ export const menuService = {
         if (data.name) formData.append('name', data.name);
         if (data.item_type) formData.append('item_type', data.item_type);
         if (data.unit) formData.append('unit', data.unit);
-        if (data.sale_price) formData.append('sale_price', data.sale_price.toString());
+        if (data.sale_price !== null && data.sale_price !== undefined) {
+            formData.append('sale_price', data.sale_price.toString());
+        }
         if (data.availability_status) formData.append('availability_status', data.availability_status);
         
         // If image is explicitly set to null, we might need a way to clear it, but usually sending empty is enough

@@ -19,12 +19,14 @@ import type { ItemGroup, Item, CreateItemGroupRequest, CreateItemRequest } from 
 export const MenuManagementPage = () => {
     // --- State ---
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+    const [typeFilter, setTypeFilter] = useState<string>('ALL');
 
     const [isGroupModalVisible, setIsGroupModalVisible] = useState(false);
     const [editingGroup, setEditingGroup] = useState<ItemGroup | null>(null);
 
     const [isItemModalVisible, setIsItemModalVisible] = useState(false);
     const [editingItem, setEditingItem] = useState<Item | null>(null);
+    const [addingItemType, setAddingItemType] = useState<string>('MENU_ITEM');
 
     // --- Queries ---
     const { data: groupData, isLoading: isLoadingGroups } = useItemGroups();
@@ -45,14 +47,35 @@ export const MenuManagementPage = () => {
 
     // --- Derived Data ---
     const filteredItems = useMemo(() => {
-        if (!selectedGroupId) return allItems;
-        return allItems.filter(item => item.item_group_id === selectedGroupId);
-    }, [allItems, selectedGroupId]);
+        let result = allItems;
+        if (selectedGroupId) {
+            result = result.filter(item => item.item_group_id === selectedGroupId);
+        }
+        if (typeFilter !== 'ALL') {
+            result = result.filter(item => (item.item_type || 'MENU_ITEM') === typeFilter);
+        }
+        return result;
+    }, [allItems, selectedGroupId, typeFilter]);
 
     const selectedGroupName = useMemo(() => {
         if (!selectedGroupId) return undefined;
         return itemGroups.find(g => g.id === selectedGroupId)?.name;
     }, [itemGroups, selectedGroupId]);
+
+    // --- Handlers: Item Group & Type Filter ---
+    const handleSelectGroup = (groupId: string | null) => {
+        setSelectedGroupId(groupId);
+        if (groupId !== null) {
+            setTypeFilter('ALL');
+        }
+    };
+
+    const handleSetTypeFilter = (type: string) => {
+        setTypeFilter(type);
+        if (type !== 'ALL') {
+            setSelectedGroupId(null);
+        }
+    };
 
     // --- Handlers: Item Group ---
     const handleAddGroup = () => {
@@ -102,7 +125,8 @@ export const MenuManagementPage = () => {
     };
 
     // --- Handlers: Item ---
-    const handleAddItem = () => {
+    const handleAddItem = (type: string = 'MENU_ITEM') => {
+        setAddingItemType(type);
         setEditingItem(null);
         setIsItemModalVisible(true);
     };
@@ -148,13 +172,13 @@ export const MenuManagementPage = () => {
     };
 
     return (
-        <div className="flex h-full bg-gray-100">
+        <div className="flex flex-col md:flex-row h-full bg-gray-100 overflow-hidden">
             {/* Sidebar */}
-            <div className="w-64 flex-shrink-0">
+            <div className="w-full md:w-64 flex-shrink-0 h-48 md:h-full border-b md:border-b-0 border-gray-200">
                 <ItemGroupSidebar
                     itemGroups={itemGroups}
                     selectedGroupId={selectedGroupId}
-                    onSelectGroup={setSelectedGroupId}
+                    onSelectGroup={handleSelectGroup}
                     onAddGroup={handleAddGroup}
                     onEditGroup={handleEditGroup}
                     onDeleteGroup={handleDeleteGroup}
@@ -172,6 +196,8 @@ export const MenuManagementPage = () => {
                     onEditItem={handleEditItem}
                     onDeleteItem={handleDeleteItem}
                     selectedGroupName={selectedGroupName}
+                    typeFilter={typeFilter}
+                    onSetTypeFilter={handleSetTypeFilter}
                 />
             </div>
 
@@ -192,6 +218,7 @@ export const MenuManagementPage = () => {
                 isLoading={createItemMutation.isPending || updateItemMutation.isPending}
                 itemGroups={itemGroups}
                 defaultGroupId={selectedGroupId || undefined}
+                defaultItemType={addingItemType}
             />
         </div>
     );

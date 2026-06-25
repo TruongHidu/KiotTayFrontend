@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, X } from 'lucide-react';
+import { MapPin, X, UtensilsCrossed } from 'lucide-react';
 
 import { fetchPublicMenu, placeOrder, fetchOrderStatus, addOrderItems } from '../services/menuService';
 import { useCartStore } from '@/store/cartStore';
-import type { PublicItem, PublicMenuResponse, QrType } from '@/types/public-menu';
+import { useQrSessionStore } from '@/store/useQrSessionStore';
+import type { PublicItem, QrType } from '@/types/public-menu';
 
 import { SplashScreen, MenuItemSkeleton } from '../components/SplashScreen';
 import { CategoryNav } from '../components/CategoryNav';
@@ -22,9 +23,11 @@ export const MenuPage = () => {
     const qrType = (searchParams.get('type') || 'qr_static') as QrType;
     const isAddingToOrder = searchParams.get('action') === 'add_items';
 
-    const [menuData, setMenuData] = useState<PublicMenuResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [restaurantName, setRestaurantName] = useState<string | undefined>();
+    const [restaurantData, setRestaurantData] = useState<{ name?: string; address?: string; banner_url?: string | null } | undefined>();
+    const [itemGroups, setItemGroups] = useState<{ group_id: string; group_name: string; display_order: number; items: PublicItem[] }[]>([]);
 
     const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
     const [selectedItem, setSelectedItem] = useState<PublicItem | null>(null);
@@ -32,6 +35,10 @@ export const MenuPage = () => {
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
     const { items: cartItems, clearCart, setRestaurantId } = useCartStore();
+
+    // QR Session store — lưu table info + active_order
+    const { table, activeOrder, setSession, setActiveOrder } = useQrSessionStore();
+    const isTableOrder = qrType === 'qr_table';
 
     // ---- Load menu ----
     useEffect(() => {
@@ -42,73 +49,101 @@ export const MenuPage = () => {
         }
 
         const load = async () => {
-            // Anti-spam check: Only 1 active order per device
-            const activeOrderId = localStorage.getItem('active_order_id');
-            if (activeOrderId && !isAddingToOrder) {
-                try {
-                    const activeOrder = await fetchOrderStatus(activeOrderId);
-                    const isActive = activeOrder.status === 'open' || activeOrder.status === 'cooking';
-                    if (isActive) {
-                        // Save latest data to localStorage before redirecting
-                        localStorage.setItem('active_order_data', JSON.stringify(activeOrder));
-                        navigate(`/menu/order-tracking/${activeOrderId}?public_token=${public_token}`);
-                        return; // Stop loading menu
-                    } else {
-                        // Order is terminal (served/paid/cancelled), clear everything
+            // Với qr_static: logic cũ — anti-spam (redirect nếu có active_order_id)
+            if (qrType === 'qr_static') {
+                const activeOrderId = localStorage.getItem('active_order_id');
+                if (activeOrderId && !isAddingToOrder) {
+                    try {
+                        const order = await fetchOrderStatus(activeOrderId);
+                        const terminalStatuses = ['COMPLETED', 'CANCELLED', 'paid', 'cancelled'];
+                        const isActive = !terminalStatuses.includes(order.status);
+                        if (isActive) {
+                            localStorage.setItem('active_order_data', JSON.stringify(order));
+                            navigate(`/menu/order-tracking/${activeOrderId}?public_token=${public_token}&type=${qrType}`);
+                            return;
+                        } else {
+                            localStorage.removeItem('active_order_id');
+                            localStorage.removeItem('active_order_data');
+                        }
+                    } catch {
                         localStorage.removeItem('active_order_id');
                         localStorage.removeItem('active_order_data');
                     }
-                } catch {
-                    // API error (e.g. 404), clear stale data
-                    localStorage.removeItem('active_order_id');
-                    localStorage.removeItem('active_order_data');
                 }
             }
 
             try {
                 const data = await fetchPublicMenu(public_token, qrType);
-                setMenuData(data);
-                if (data.restaurant) {
+
+                setItemGroups(data.item_groups);
+                setRestaurantData(data.restaurant);
+                setRestaurantName(data.restaurant?.name);
+
+                if (data.restaurant?.id) {
                     setRestaurantId(data.restaurant.id);
                 }
-                // Do not set activeGroupId here so all items are shown by default
-            } catch {
-                setError('Không thể tải thực đơn. Vui lòng thử lại.');
+
+                // Lưu session bàn + active_order vào store
+                setSession({
+                    publicToken: public_token,
+                    qrType,
+                    table: data.table,
+                    activeOrder: data.active_order,
+                });
+
+            } catch (err: any) {
+                if (err.response?.status === 403) {
+                    setError(err.response.data?.message || 'Nhà hàng chưa đăng ký hoặc đã hết hạn tính năng gọi món tại bàn.');
+                } else {
+                    setError('Không thể tải thực đơn. Vui lòng thử lại.');
+                }
             } finally {
                 setLoading(false);
             }
         };
 
-        // Minimum splash time for UX
         const minSplash = new Promise((resolve) => setTimeout(resolve, 1200));
         Promise.all([load(), minSplash]).then(() => setLoading(false));
-    }, [public_token, qrType, setRestaurantId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [public_token, qrType]);
 
     // ---- Filter toggle ----
     const handleCategorySelect = useCallback((groupId: string) => {
         setActiveGroupId((prev) => (prev === groupId ? null : groupId));
-        // Scroll slightly down to focus on the menu list
         window.scrollTo({ top: 180, behavior: 'smooth' });
     }, []);
 
-    // ---- Place order ----
+    // ---- Place order / Add items ----
     const handlePlaceOrder = async (customerName: string, customerPhone: string, note: string) => {
-        if (!menuData || cartItems.length === 0) return;
+        if (cartItems.length === 0) return;
         setIsPlacingOrder(true);
+
         try {
-            const activeOrderId = localStorage.getItem('active_order_id');
             let orderId = '';
 
-            if (isAddingToOrder && activeOrderId) {
-                const order = await addOrderItems(activeOrderId, {
-                    items: cartItems.map((i) => ({
-                        item_id: i.item_id,
-                        quantity: i.quantity,
-                        note: i.note,
-                    })),
+            if (isAddingToOrder) {
+                // Chế độ gọi thêm qr_static (legacy flow)
+                const activeOrderId = localStorage.getItem('active_order_id');
+                if (activeOrderId) {
+                    const order = await addOrderItems(activeOrderId, {
+                        items: cartItems.map((i) => ({ item_id: i.item_id, quantity: i.quantity, note: i.note })),
+                    });
+                    orderId = order.id;
+                }
+            } else if (isTableOrder && activeOrder) {
+                // ==========================================================
+                // Bàn đang có đơn → GỌI THÊM MÓN (Collaborative Ordering)
+                // ==========================================================
+                const updatedOrder = await addOrderItems(activeOrder.id, {
+                    items: cartItems.map((i) => ({ item_id: i.item_id, quantity: i.quantity, note: i.note })),
                 });
-                orderId = order.id;
+                orderId = updatedOrder.id;
+                // Cập nhật active_order trong store
+                setActiveOrder(updatedOrder);
             } else {
+                // ==========================================================
+                // Tạo đơn mới (bàn mới hoặc qr_static lần đầu)
+                // ==========================================================
                 const order = await placeOrder({
                     public_token,
                     source_channel: qrType,
@@ -122,13 +157,20 @@ export const MenuPage = () => {
                     })),
                 });
                 orderId = order.id;
-                localStorage.setItem('active_order_id', order.id);
+
+                if (qrType === 'qr_static') {
+                    localStorage.setItem('active_order_id', order.id);
+                } else {
+                    // qr_table: lưu vào store
+                    setActiveOrder(order);
+                }
             }
 
             clearCart();
             setCartOpen(false);
-            navigate(`/menu/order-tracking/${orderId}?public_token=${public_token}`);
-        } catch {
+            navigate(`/menu/order-tracking/${orderId}?public_token=${public_token}&type=${qrType}`);
+        } catch (err) {
+            console.error('[MenuPage] Lỗi đặt đơn:', err);
             alert('Không thể gửi đơn. Vui lòng thử lại.');
         } finally {
             setIsPlacingOrder(false);
@@ -136,7 +178,7 @@ export const MenuPage = () => {
     };
 
     // ---- States ----
-    if (loading) return <SplashScreen name={menuData?.restaurant?.name} />;
+    if (loading) return <SplashScreen name={restaurantName} />;
 
     if (error) {
         return (
@@ -148,12 +190,11 @@ export const MenuPage = () => {
         );
     }
 
-    if (!menuData) return null;
-
-    const { restaurant, item_groups } = menuData;
+    // isAddingToOrder cho chế độ gọi thêm
+    const effectivelyAddingToOrder = isAddingToOrder || (isTableOrder && !!activeOrder);
 
     return (
-        <motion.div 
+        <motion.div
             initial={isAddingToOrder ? { y: '100%' } : { opacity: 0 }}
             animate={isAddingToOrder ? { y: 0 } : { opacity: 1 }}
             exit={isAddingToOrder ? { y: '100%' } : { opacity: 0 }}
@@ -162,7 +203,7 @@ export const MenuPage = () => {
         >
             {/* ---- Close button for Add Items mode ---- */}
             {isAddingToOrder && (
-                <button 
+                <button
                     onClick={() => navigate(-1)}
                     className="absolute top-4 right-4 z-50 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/60 transition-colors"
                 >
@@ -170,12 +211,35 @@ export const MenuPage = () => {
                 </button>
             )}
 
+            {/* ---- Table Banner (chỉ hiển thị khi qr_table và có thông tin bàn) ---- */}
+            <AnimatePresence>
+                {isTableOrder && table && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="sticky top-0 z-40 bg-amber-500 text-white px-4 py-2 flex items-center justify-center gap-2 shadow-md text-sm font-semibold"
+                    >
+                        <UtensilsCrossed size={15} />
+                        <span>Bàn: <strong>{table.name}</strong></span>
+                        {table.area && (
+                            <span className="opacity-80">· {table.area.name}</span>
+                        )}
+                        {activeOrder && (
+                            <span className="ml-2 bg-white/20 rounded-full px-2 py-0.5 text-xs">
+                                Đang có đơn #{activeOrder.id?.slice(-6).toUpperCase()}
+                            </span>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* ---- Hero Banner ---- */}
             <div className="relative h-52 overflow-hidden">
-                {restaurant?.banner_url ? (
+                {restaurantData?.banner_url ? (
                     <img
-                        src={restaurant.banner_url}
-                        alt={restaurant.name}
+                        src={restaurantData.banner_url}
+                        alt={restaurantData.name}
                         className="w-full h-full object-cover"
                     />
                 ) : (
@@ -190,9 +254,9 @@ export const MenuPage = () => {
                         animate={{ y: 0, opacity: 1 }}
                         className="text-2xl font-black tracking-tight drop-shadow-lg"
                     >
-                        {restaurant?.name || 'Nhà hàng KiotTay'}
+                        {restaurantData?.name || 'Nhà hàng KiotTay'}
                     </motion.h1>
-                    {restaurant?.address && (
+                    {restaurantData?.address && (
                         <motion.p
                             initial={{ y: 15, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
@@ -200,7 +264,7 @@ export const MenuPage = () => {
                             className="text-white/80 text-sm flex items-center gap-1 mt-0.5"
                         >
                             <MapPin size={12} />
-                            {restaurant.address}
+                            {restaurantData.address}
                         </motion.p>
                     )}
                 </div>
@@ -209,7 +273,7 @@ export const MenuPage = () => {
             {/* ---- Sticky Category Nav ---- */}
             <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 shadow-sm py-3">
                 <CategoryNav
-                    groups={item_groups}
+                    groups={itemGroups}
                     activeGroupId={activeGroupId}
                     onSelect={handleCategorySelect}
                 />
@@ -217,7 +281,7 @@ export const MenuPage = () => {
 
             {/* ---- Menu Groups ---- */}
             <div className="space-y-8 pt-4 px-4">
-                {item_groups
+                {itemGroups
                     ?.filter((group) => activeGroupId === null || group.group_id === activeGroupId)
                     .map((group) => (
                     <div
@@ -253,7 +317,7 @@ export const MenuPage = () => {
                     </div>
                 ))}
 
-                {/* Loading Skeleton (shown while API loads) */}
+                {/* Loading Skeleton */}
                 {loading && (
                     <div className="space-y-3">
                         {Array.from({ length: 4 }).map((_, i) => (
@@ -274,11 +338,12 @@ export const MenuPage = () => {
                 onClose={() => setCartOpen(false)}
                 onPlaceOrder={handlePlaceOrder}
                 isPlacingOrder={isPlacingOrder}
-                isAddingToOrder={isAddingToOrder}
+                isAddingToOrder={effectivelyAddingToOrder}
+                activeOrder={activeOrder}
             />
 
-            <FloatingCartBar 
-                onClick={() => setCartOpen(true)} 
+            <FloatingCartBar
+                onClick={() => setCartOpen(true)}
             />
         </motion.div>
     );

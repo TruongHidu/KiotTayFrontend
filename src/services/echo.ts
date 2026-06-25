@@ -2,7 +2,7 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 // Gán Pusher vào window scope để laravel-echo có thể sử dụng
-window.Pusher = Pusher;
+(window as any).Pusher = Pusher;
 
 export const echo = new Echo({
     broadcaster: 'reverb',

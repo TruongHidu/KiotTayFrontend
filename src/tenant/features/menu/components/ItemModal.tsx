@@ -2,7 +2,9 @@ import { Modal, Form, Input, InputNumber, Switch, Select, Upload, message, AutoC
 import { PlusOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd';
 import type { Item, ItemGroup } from '@/types';
+import { FeatureCode } from '@/types';
 import { useEffect, useState } from 'react';
+import { useFeatureFlag } from '@/auth/hooks/useFeatureFlag';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -15,6 +17,7 @@ interface ItemModalProps {
     isLoading?: boolean;
     itemGroups: ItemGroup[];
     defaultGroupId?: string;
+    defaultItemType?: string;
 }
 
 export const ItemModal = ({
@@ -24,15 +27,19 @@ export const ItemModal = ({
     initialData,
     isLoading,
     itemGroups,
-    defaultGroupId
+    defaultGroupId,
+    defaultItemType = 'MENU_ITEM'
 }: ItemModalProps) => {
     const [form] = Form.useForm();
     const [fileList, setFileList] = useState<UploadFile[]>([]);
+    
+    const hasInventoryManagement = useFeatureFlag(FeatureCode.INVENTORY_MANAGEMENT);
 
     useEffect(() => {
         if (visible) {
             if (initialData) {
                 form.setFieldsValue({
+                    item_type: initialData.item_type || 'MENU_ITEM',
                     item_group_id: initialData.item_group_id,
                     name: initialData.name,
                     unit: initialData.unit,
@@ -59,14 +66,16 @@ export const ItemModal = ({
             } else {
                 form.resetFields();
                 form.setFieldsValue({
-                    item_group_id: defaultGroupId || (itemGroups.length > 0 ? itemGroups[0].id : undefined),
+                    item_type: defaultItemType,
+                    item_group_id: defaultItemType === 'INGREDIENT' ? null : (defaultGroupId || (itemGroups.length > 0 ? itemGroups[0].id : undefined)),
                     availability_status: 'IN_STOCK',
                     is_active: true,
+                    sale_price: defaultItemType === 'INGREDIENT' ? null : undefined,
                 });
                 setFileList([]);
             }
         }
-    }, [visible, initialData, form, defaultGroupId, itemGroups]);
+    }, [visible, initialData, form, defaultGroupId, itemGroups, defaultItemType]);
 
     const handleOk = () => {
         form.validateFields().then((values) => {
@@ -93,6 +102,22 @@ export const ItemModal = ({
         setFileList(newFileList.slice(-1));
     };
 
+    const handleValuesChange = (changedValues: any) => {
+        if (changedValues.item_type === 'INGREDIENT') {
+            form.setFieldsValue({
+                item_group_id: null,
+                sale_price: null
+            });
+        } else if (changedValues.item_type === 'MENU_ITEM') {
+            form.setFieldsValue({
+                item_group_id: defaultGroupId || (itemGroups.length > 0 ? itemGroups[0].id : undefined)
+            });
+        }
+    };
+
+    const itemType = Form.useWatch('item_type', form);
+    const isIngredient = itemType === 'INGREDIENT';
+
     return (
         <Modal
             title={initialData ? 'Chỉnh sửa Món ăn' : 'Thêm Món ăn mới'}
@@ -104,22 +129,38 @@ export const ItemModal = ({
             cancelText="Hủy"
             width={600}
         >
-            <Form form={form} layout="vertical">
+            <Form form={form} layout="vertical" onValuesChange={handleValuesChange}>
                 <div className="grid grid-cols-2 gap-4">
                     <Form.Item
-                        name="item_group_id"
-                        label="Nhóm món"
-                        rules={[{ required: true, message: 'Vui lòng chọn nhóm món' }]}
+                        name="item_type"
+                        label="Loại"
+                        rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
                         className="col-span-2 sm:col-span-1"
                     >
-                        <Select placeholder="Chọn nhóm món">
-                            {itemGroups.map((group) => (
-                                <Option key={group.id} value={group.id}>
-                                    {group.name}
-                                </Option>
-                            ))}
+                        <Select>
+                            <Option value="MENU_ITEM">Món ăn/Đồ uống (Hàng hóa)</Option>
+                            <Option value="INGREDIENT" disabled={!hasInventoryManagement}>
+                                Nguyên liệu (Hàng chế biến) {!hasInventoryManagement && '- Cần nâng cấp gói'}
+                            </Option>
                         </Select>
                     </Form.Item>
+
+                    {!isIngredient && (
+                        <Form.Item
+                            name="item_group_id"
+                            label="Nhóm món"
+                            rules={[{ required: true, message: 'Vui lòng chọn nhóm món' }]}
+                            className="col-span-2 sm:col-span-1"
+                        >
+                            <Select placeholder="Chọn nhóm món">
+                                {itemGroups.map((group) => (
+                                    <Option key={group.id} value={group.id}>
+                                        {group.name}
+                                    </Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    )}
 
                     <Form.Item
                         name="name"
@@ -130,19 +171,22 @@ export const ItemModal = ({
                         <Input placeholder="Ví dụ: Cà phê đen" />
                     </Form.Item>
 
-                    <Form.Item
-                        name="sale_price"
-                        label="Giá bán"
-                        rules={[{ required: true, message: 'Vui lòng nhập giá bán' }]}
-                    >
-                        <InputNumber
-                            style={{ width: '100%' }}
-                            formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                            parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
-                            placeholder="0"
-                            addonAfter="VNĐ"
-                        />
-                    </Form.Item>
+                    {!isIngredient && (
+                        <Form.Item
+                            name="sale_price"
+                            label="Giá bán"
+                            rules={[{ required: true, message: 'Vui lòng nhập giá bán' }]}
+                            className="col-span-2 sm:col-span-1"
+                        >
+                            <InputNumber
+                                style={{ width: '100%' }}
+                                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                parser={(value) => value!.replace(/\$\s?|(,*)/g, '')}
+                                placeholder="0"
+                                addonAfter="VNĐ"
+                            />
+                        </Form.Item>
+                    )}
 
                     <Form.Item
                         name="unit"
