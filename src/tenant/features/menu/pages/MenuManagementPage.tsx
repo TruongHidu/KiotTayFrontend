@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { message } from 'antd';
+import { message, Drawer } from 'antd';
 import { ItemGroupSidebar } from '../components/ItemGroupSidebar';
 import { ItemTable } from '../components/ItemTable';
 import { ItemGroupModal } from '../components/ItemGroupModal';
 import { ItemModal } from '../components/ItemModal';
+import { RecipeTab } from '../components/RecipeTab';
 import {
     useItemGroups,
     useCreateItemGroup,
@@ -27,6 +28,8 @@ export const MenuManagementPage = () => {
     const [isItemModalVisible, setIsItemModalVisible] = useState(false);
     const [editingItem, setEditingItem] = useState<Item | null>(null);
     const [addingItemType, setAddingItemType] = useState<string>('MENU_ITEM');
+    const [recipeItemId, setRecipeItemId] = useState<string | null>(null);
+    const [recipeItemName, setRecipeItemName] = useState<string>('');
 
     // --- Queries ---
     const { data: groupData, isLoading: isLoadingGroups } = useItemGroups();
@@ -136,6 +139,11 @@ export const MenuManagementPage = () => {
         setIsItemModalVisible(true);
     };
 
+    const handleViewRecipe = (item: Item) => {
+        setRecipeItemId(item.id);
+        setRecipeItemName(item.name);
+    };
+
     const handleDeleteItem = (id: string) => {
         deleteItemMutation.mutate(id, {
             onSuccess: () => {
@@ -195,6 +203,7 @@ export const MenuManagementPage = () => {
                     onAddItem={handleAddItem}
                     onEditItem={handleEditItem}
                     onDeleteItem={handleDeleteItem}
+                    onViewRecipe={handleViewRecipe}
                     selectedGroupName={selectedGroupName}
                     typeFilter={typeFilter}
                     onSetTypeFilter={handleSetTypeFilter}
@@ -220,6 +229,17 @@ export const MenuManagementPage = () => {
                 defaultGroupId={selectedGroupId || undefined}
                 defaultItemType={addingItemType}
             />
+
+            {/* Recipe Drawer */}
+            <Drawer
+                title={`Công thức: ${recipeItemName}`}
+                open={!!recipeItemId}
+                onClose={() => setRecipeItemId(null)}
+                width={700}
+                destroyOnClose
+            >
+                {recipeItemId && <RecipeTab itemId={recipeItemId} />}
+            </Drawer>
         </div>
     );
 };

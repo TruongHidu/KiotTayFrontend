@@ -1,6 +1,5 @@
-import { useState, useMemo } from 'react';
 import { Table, Button, Space, Tag, Image, Popconfirm, Typography, Dropdown, Segmented } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined, DownOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, PlusOutlined, DownOutlined, ExperimentOutlined } from '@ant-design/icons';
 import type { Item, ItemGroup } from '@/types';
 import { FeatureCode } from '@/types';
 import type { ColumnsType } from 'antd/es/table';
@@ -16,6 +15,7 @@ interface ItemTableProps {
     onAddItem: (type: string) => void;
     onEditItem: (item: Item) => void;
     onDeleteItem: (id: string) => void;
+    onViewRecipe?: (item: Item) => void;
     selectedGroupName?: string;
     typeFilter: string;
     onSetTypeFilter: (type: string) => void;
@@ -28,6 +28,7 @@ export const ItemTable = ({
     onAddItem,
     onEditItem,
     onDeleteItem,
+    onViewRecipe,
     selectedGroupName,
     typeFilter,
     onSetTypeFilter
@@ -170,6 +171,14 @@ export const ItemTable = ({
             align: 'right',
             render: (_, record) => (
                 <Space size="middle">
+                    {record.item_type === 'MENU_ITEM' && onViewRecipe && (
+                        <Button
+                            type="default"
+                            icon={<ExperimentOutlined />}
+                            onClick={() => onViewRecipe(record)}
+                            title="Công thức"
+                        />
+                    )}
                     <Button 
                         type="default" 
                         icon={<EditOutlined />} 
