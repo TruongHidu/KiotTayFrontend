@@ -46,6 +46,9 @@ import { TableAreaPage } from '@/tenant/features/tables/pages/TableAreaPage';
 import { RestaurantTablePage } from '@/tenant/features/tables/pages/RestaurantTablePage';
 import { StaffListPage } from '@/tenant/features/staff/pages/StaffListPage';
 import { PaymentMethodSettingsPage } from '@/tenant/features/settings/pages/PaymentMethodSettingsPage';
+import { WarehousePage } from '@/tenant/features/inventory/pages/WarehousePage';
+import { InventoryDashboardPage } from '@/tenant/features/inventory/pages/InventoryDashboardPage';
+import { StockDocumentPage } from '@/tenant/features/inventory/pages/StockDocumentPage';
 import { FeatureGuard } from '@/auth/components/FeatureGuard';
 import { RoleGuard } from '@/auth/components/RoleGuard';
 import { FeatureCode } from '@/types';
@@ -176,6 +179,36 @@ export const router = createBrowserRouter([
                 element: (
                     <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
                         <PaymentMethodSettingsPage />
+                    </RoleGuard>
+                ),
+            },
+            {
+                path: 'inventory',
+                element: (
+                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                        <FeatureGuard feature={FeatureCode.INVENTORY_MANAGEMENT} fallback={<UpgradeRequiredPage />}>
+                            <InventoryDashboardPage />
+                        </FeatureGuard>
+                    </RoleGuard>
+                ),
+            },
+            {
+                path: 'warehouses',
+                element: (
+                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                        <FeatureGuard feature={FeatureCode.INVENTORY_MANAGEMENT} fallback={<UpgradeRequiredPage />}>
+                            <WarehousePage />
+                        </FeatureGuard>
+                    </RoleGuard>
+                ),
+            },
+            {
+                path: 'stock-documents',
+                element: (
+                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                        <FeatureGuard feature={FeatureCode.INVENTORY_MANAGEMENT} fallback={<UpgradeRequiredPage />}>
+                            <StockDocumentPage />
+                        </FeatureGuard>
                     </RoleGuard>
                 ),
             },

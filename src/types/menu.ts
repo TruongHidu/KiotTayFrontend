@@ -22,6 +22,18 @@ export interface UpdateItemGroupRequest {
 
 export type AvailabilityStatus = 'IN_STOCK' | 'OUT_OF_STOCK' | 'SUSPENDED';
 
+export interface ItemIngredient {
+    id: string;
+    name: string;
+    unit: string;
+    cost_price: string;
+    pivot: { quantity: string };
+}
+
+export interface SyncRecipeRequest {
+    ingredients: { ingredient_id: string; quantity: number }[];
+}
+
 export interface Item {
     id: string;
     restaurant_id: string;
@@ -38,8 +50,9 @@ export interface Item {
     created_at: string;
     updated_at: string;
     
-    // Virtual relation
+    // Virtual relations
     item_group?: ItemGroup;
+    ingredients?: ItemIngredient[];
 }
 
 export interface CreateItemRequest {

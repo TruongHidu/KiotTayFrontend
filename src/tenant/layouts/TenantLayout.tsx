@@ -11,6 +11,8 @@ import {
     MenuUnfoldOutlined,
     OrderedListOutlined,
     TeamOutlined,
+    DatabaseOutlined,
+    BarChartOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth.store';
 import { useLogout } from '@/auth/services/auth.hooks';
@@ -55,6 +57,7 @@ export const TenantLayout = () => {
     const hasTableManagement = useFeatureFlag(FeatureCode.TABLE_MANAGEMENT);
     const hasStaffManagement = useFeatureFlag(FeatureCode.STAFF_MANAGEMENT);
     const hasPosQuickOrder = useFeatureFlag(FeatureCode.POS_QUICK_ORDER);
+    const hasInventoryManagement = useFeatureFlag(FeatureCode.INVENTORY_MANAGEMENT);
 
     const userRole = user?.role as UserRole;
     const isOwner = userRole === UserRole.OWNER;
@@ -133,6 +136,29 @@ export const TenantLayout = () => {
             icon: <TeamOutlined />,
             label: 'Nhân viên',
             onClick: () => navigate('/portal/staff'),
+        } : null,
+        hasInventoryManagement && isOwnerOrManager ? {
+            key: '/portal/inventory-group',
+            icon: <DatabaseOutlined />,
+            label: 'Quản lý Kho',
+            children: [
+                {
+                    key: '/portal/inventory',
+                    icon: <BarChartOutlined />,
+                    label: 'Tồn kho',
+                    onClick: () => navigate('/portal/inventory'),
+                },
+                {
+                    key: '/portal/warehouses',
+                    label: 'Kho chứa',
+                    onClick: () => navigate('/portal/warehouses'),
+                },
+                {
+                    key: '/portal/stock-documents',
+                    label: 'Chứng từ kho',
+                    onClick: () => navigate('/portal/stock-documents'),
+                },
+            ],
         } : null,
         isOwnerOrManager ? {
             key: '/portal/settings-group',

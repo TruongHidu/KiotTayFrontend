@@ -5,12 +5,15 @@ import type {
     UpdateItemGroupRequest,
     CreateItemRequest,
     UpdateItemRequest,
+    SyncRecipeRequest,
 } from '@/types';
 import { queryClient } from '@/api/query-client';
 
 const QUERY_KEYS = {
     itemGroups: 'tenant_item_groups',
     items: 'tenant_items',
+    ingredients: 'tenant_ingredients',
+    itemDetail: 'tenant_item_detail',
 };
 
 // --- Item Groups Hooks ---
@@ -83,6 +86,34 @@ export const useDeleteItem = () => {
         mutationFn: (id: string) => menuService.deleteItem(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.items] });
+        },
+    });
+};
+
+// --- Ingredients / Recipe (BOM) Hooks ---
+
+export const useIngredients = () => {
+    return useQuery({
+        queryKey: [QUERY_KEYS.ingredients],
+        queryFn: menuService.getIngredients,
+    });
+};
+
+export const useItemDetail = (id: string) => {
+    return useQuery({
+        queryKey: [QUERY_KEYS.itemDetail, id],
+        queryFn: () => menuService.getItem(id),
+        enabled: !!id,
+    });
+};
+
+export const useSyncRecipe = () => {
+    return useMutation({
+        mutationFn: ({ itemId, data }: { itemId: string; data: SyncRecipeRequest }) =>
+            menuService.syncRecipe(itemId, data),
+        onSuccess: (_data, variables) => {
+            queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.items] });
+            queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.itemDetail, variables.itemId] });
         },
     });
 };

@@ -6,6 +6,7 @@ import type {
     Item,
     CreateItemRequest,
     UpdateItemRequest,
+    SyncRecipeRequest,
 } from '@/types';
 
 // API Response type commonly used
@@ -114,5 +115,19 @@ export const menuService = {
     deleteItem: (id: string) =>
         apiClient
             .delete<ApiResponse<null>>(`/tenant/items/${id}`)
+            .then((res) => res.data),
+
+    // --- Ingredients / Recipe (BOM) ---
+
+    getIngredients: () =>
+        apiClient
+            .get<ApiResponse<Item[]>>('/tenant/items', {
+                params: { item_type: 'INGREDIENT' },
+            })
+            .then((res) => res.data),
+
+    syncRecipe: (itemId: string, data: SyncRecipeRequest) =>
+        apiClient
+            .post<ApiResponse<Item>>(`/tenant/items/${itemId}/recipe`, data)
             .then((res) => res.data),
 };

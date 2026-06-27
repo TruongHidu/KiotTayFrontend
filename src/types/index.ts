@@ -8,3 +8,7 @@ export * from './menu';
 export * from './table';
 export * from './staff';
 export * from './order';
+export * from './warehouse';
+export * from './stock-document';
+export * from './inventory';
+
