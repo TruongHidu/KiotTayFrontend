@@ -1,9 +1,10 @@
-import type { Package } from './package';
+import type { Package, PackagePrice } from './package';
 
 export interface Subscription {
     id: string;
     restaurant_id: string;
     package: Package;
+    package_price?: PackagePrice;
     start_date: string | null;
     end_date: string | null;
     status: string;
@@ -15,6 +16,7 @@ export interface Subscription {
 
 export interface AssignPackageRequest {
     package_id: string;
+    package_price_id?: string;
 }
 
 export interface AssignPackageResponse {

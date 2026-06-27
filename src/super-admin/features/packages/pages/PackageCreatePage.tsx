@@ -144,6 +144,61 @@ export const PackageCreatePage = () => {
                         <Checkbox>Kích hoạt gói ngay</Checkbox>
                     </Form.Item>
 
+                    <Card size="small" title="Cấu Hình Các Mốc Giá & Thời Hạn (Prices Tier)" className="mb-6">
+                        <Form.List name="prices">
+                            {(fields, { add, remove }) => (
+                                <div className="flex flex-col gap-4">
+                                    {fields.map(({ key, name, ...restField }) => (
+                                        <Card size="small" key={key} className="bg-gray-50 border border-gray-200">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, 'duration_days']}
+                                                    label="Thời Hạn (Ngày)"
+                                                    rules={[{ required: true, message: 'Nhập số ngày' }]}
+                                                >
+                                                    <InputNumber placeholder="30, 90, 365..." style={{ width: '100%' }} />
+                                                </Form.Item>
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, 'price']}
+                                                    label="Giá Bán (VNĐ)"
+                                                    rules={[{ required: true, message: 'Nhập giá bán' }]}
+                                                >
+                                                    <InputNumber placeholder="Giá bán" style={{ width: '100%' }} />
+                                                </Form.Item>
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, 'original_price']}
+                                                    label="Giá Gốc (VNĐ - Tùy chọn)"
+                                                >
+                                                    <InputNumber placeholder="Giá trước giảm" style={{ width: '100%' }} />
+                                                </Form.Item>
+                                            </div>
+                                            <div className="flex justify-between items-center mt-2">
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, 'is_active']}
+                                                    valuePropName="checked"
+                                                    initialValue={true}
+                                                    noStyle
+                                                >
+                                                    <Checkbox>Đang hoạt động</Checkbox>
+                                                </Form.Item>
+                                                <Button type="link" danger onClick={() => remove(name)}>
+                                                    Xóa mốc này
+                                                </Button>
+                                            </div>
+                                        </Card>
+                                    ))}
+                                    <Button type="dashed" onClick={() => add()} block>
+                                        + Thêm Mốc Giá Mới (1 tháng, 3 tháng, 12 tháng...)
+                                    </Button>
+                                </div>
+                            )}
+                        </Form.List>
+                    </Card>
+
                     <Form.Item>
                         <Space>
                             <Button type="primary" htmlType="submit" loading={isPending}>

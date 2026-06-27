@@ -66,3 +66,12 @@ export const useSyncPackageFeatures = (id: string) => {
         },
     });
 };
+
+export const useDeletePackage = () => {
+    return useMutation({
+        mutationFn: (id: string) => packageService.deletePackage(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: [packageQueryKey] });
+        },
+    });
+};
