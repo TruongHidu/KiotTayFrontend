@@ -1,15 +1,23 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { App } from 'antd';
 import { getEcho } from '@/lib/echoClient';
 import { ORDER_KEYS } from '../services/order.hooks';
 import { useHighlightStore } from '../stores/highlight.store';
-import { notifyNewOrder, notifyOrderItemsAdded } from '../utils/orderNotification';
+import { notifyNewOrder, notifyOrderItemsAdded, notifyOrderServed } from '../utils/orderNotification';
+import { useTableNameMap } from '../hooks/useTableNameMap';
+import { resolveTableName } from '../utils/orderDisplay';
 import type { Order, OrderItem } from '@/types';
 
 export const useTenantOrdersSync = (restaurantId: string | undefined) => {
     const queryClient = useQueryClient();
     const { message } = App.useApp();
+    const tableNames = useTableNameMap();
+    const tableNamesRef = useRef(tableNames);
+
+    useEffect(() => {
+        tableNamesRef.current = tableNames;
+    }, [tableNames]);
 
     useEffect(() => {
         if (!restaurantId) return;
@@ -100,6 +108,16 @@ export const useTenantOrdersSync = (restaurantId: string | undefined) => {
             // Thông báo khi backend tự lùi trạng thái do khách gọi thêm
             if (e.from === 'served' && e.to === 'cooking') {
                 message.info(`Đơn ${e.order.order_code} tự động chuyển về "Đang nấu" do có món mới.`);
+            }
+
+            // Thông báo khi bếp chuyển đơn sang served (Đã lên món)
+            if (e.to === 'served' || e.to === 'READY') {
+                const tableName = resolveTableName(e.order, tableNamesRef.current);
+                notifyOrderServed({
+                    orderId: e.order.id,
+                    orderCode: e.order.order_code,
+                    tableName,
+                });
             }
         });
 

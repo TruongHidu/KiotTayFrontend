@@ -53,7 +53,6 @@ export const notifyNewOrder = ({
     orderCode,
     title = 'Đơn hàng mới!',
     body,
-    idempotencyKey,
     sound = true,
     soundLevel = 'default',
     badgeDelta = 1,
@@ -149,6 +148,43 @@ export const notifyOrderItemsAdded = ({
         duration: 8,
         type: 'warning',
         style: { borderLeft: '4px solid #f97316' },
+    });
+
+    return true;
+};
+
+interface NotifyOrderServedOptions {
+    orderId: string;
+    orderCode: string;
+    tableName?: string | null;
+}
+
+/** Toast + âm thanh khi bếp chuyển trạng thái đơn hàng sang served (Đã lên món) */
+export const notifyOrderServed = ({
+    orderId,
+    orderCode,
+    tableName,
+}: NotifyOrderServedOptions) => {
+    const key = `order-served:${orderId}`;
+    const store = useNotificationStore.getState();
+
+    if (store.isProcessed(key)) {
+        console.info('[Notification] Bỏ qua thông báo lên món (đã xử lý):', key);
+        return false;
+    }
+    store.markProcessed(key);
+
+    playNotificationSound('default');
+
+    const tableInfo = tableName ? ` (Bàn: ${tableName})` : '';
+
+    antdNotification.open({
+        message: 'Món ăn đã sẵn sàng!',
+        description: `Bếp đã chuẩn bị xong đơn #${orderCode}${tableInfo}. Vui lòng phục vụ khách!`,
+        placement: 'topRight',
+        duration: 8,
+        type: 'success',
+        style: { borderLeft: '4px solid #10b981' },
     });
 
     return true;
