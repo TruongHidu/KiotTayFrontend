@@ -2,6 +2,8 @@
 // Order Types — KiotTay POS System
 // ============================================================
 
+import type { PaginationMeta } from './api';
+
 export type OrderStatus =
     | 'open'
     | 'cooking'
@@ -113,15 +115,6 @@ export interface Order {
 }
 
 // ---- Pagination meta ----
-
-export interface PaginationMeta {
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-    from: number | null;
-    to: number | null;
-}
 
 export interface PaginatedOrdersResponse {
     data: Order[];

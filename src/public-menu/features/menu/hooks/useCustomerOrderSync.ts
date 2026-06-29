@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import echo from '@/utils/echo';
+import { getEcho } from '@/lib/echoClient';
 
 export const useCustomerOrderSync = (orderId: string | undefined) => {
     const queryClient = useQueryClient();
@@ -9,6 +9,7 @@ export const useCustomerOrderSync = (orderId: string | undefined) => {
         if (!orderId) return;
 
         const channelName = `order.${orderId}`;
+        const echo = getEcho();
         const channel = echo.channel(channelName);
 
         channel.listen('.OrderStatusTransitioned', () => {

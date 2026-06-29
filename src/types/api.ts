@@ -1,9 +1,9 @@
 export interface PaginationMeta {
     current_page: number;
-    from: number;
+    from: number | null;
     last_page: number;
     per_page: number;
-    to: number;
+    to: number | null;
     total: number;
 }
 

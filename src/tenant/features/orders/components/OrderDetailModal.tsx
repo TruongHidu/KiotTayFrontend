@@ -10,7 +10,7 @@ import {
     DollarOutlined,
     PlusCircleOutlined,
 } from '@ant-design/icons';
-import { useOrder, useUpdateOrderStatus, useCreatePayment } from '../services/order.hooks';
+import { useOrder, useUpdateOrderStatus } from '../services/order.hooks';
 import { useTableNameMap } from '../hooks/useTableNameMap';
 import { getOrderServiceDisplay } from '../utils/orderDisplay';
 import { PaymentModal } from './PaymentModal';
@@ -92,7 +92,6 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
     const serviceDisplay = order ? getOrderServiceDisplay(order, tableNames) : null;
     const nextStatuses = order ? (NEXT_STATUSES[order.status] || []) : [];
     const payments = order?.payments || [];
-    const isPaid = payments.some(p => p.status === 'PAID');
     const totalPaid = payments.reduce((s, p) => s + parseFloat(p.amount), 0);
     const remaining = order ? parseFloat(order.final_amount) - totalPaid : 0;
 

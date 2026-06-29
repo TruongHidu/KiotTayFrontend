@@ -8,7 +8,7 @@ interface FloatingCartBarProps {
 }
 
 export const FloatingCartBar = ({ onClick }: FloatingCartBarProps) => {
-    const { items, totalItems, totalPrice } = useCartStore();
+    const { totalItems, totalPrice } = useCartStore();
     const count = totalItems();
 
     return (

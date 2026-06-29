@@ -16,7 +16,7 @@ interface CartSheetProps {
 }
 
 export const CartSheet = ({ open, onClose, onPlaceOrder, isPlacingOrder, isAddingToOrder = false, activeOrder }: CartSheetProps) => {
-    const { items, totalPrice, updateQuantity, removeItem } = useCartStore();
+    const { items, totalPrice, updateQuantity } = useCartStore();
 
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');

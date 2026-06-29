@@ -12,7 +12,6 @@ import {
 import { usePosCartStore } from '@/store/posCartStore';
 import { useCreateOrder } from '../services/order.hooks';
 import { MOCK_TABLES } from '@/constants/mockTables';
-import type { Order } from '@/types';
 
 const formatCurrency = (val: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
