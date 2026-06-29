@@ -131,6 +131,45 @@ export const PackageDetailPage = () => {
                     </Descriptions.Item>
                 </Descriptions>
 
+                <Card title="Các Mốc Giá (Prices Tier)" className="mb-6">
+                    <Table
+                        dataSource={pkg.prices?.map((p) => ({ ...p, key: p.id })) || []}
+                        columns={[
+                            {
+                                title: 'Thời Hạn',
+                                dataIndex: 'duration_days',
+                                key: 'duration_days',
+                                render: (days) => `${days} ngày`,
+                            },
+                            {
+                                title: 'Giá Bán',
+                                dataIndex: 'price',
+                                key: 'price',
+                                render: (price) => formatCurrency(price),
+                            },
+                            {
+                                title: 'Giá Gốc',
+                                dataIndex: 'original_price',
+                                key: 'original_price',
+                                render: (price) => (price ? formatCurrency(price) : '—'),
+                            },
+                            {
+                                title: 'Trạng Thái',
+                                dataIndex: 'is_active',
+                                key: 'is_active',
+                                render: (isActive: boolean) => (
+                                    <Tag color={isActive ? 'green' : 'red'}>
+                                        {isActive ? 'Hoạt động' : 'Tắt'}
+                                    </Tag>
+                                ),
+                            },
+                        ]}
+                        pagination={false}
+                        size="small"
+                        locale={{ emptyText: 'Chưa cấu hình mốc giá nào (Đang dùng giá mặc định)' }}
+                    />
+                </Card>
+
                 <Card title="Tính Năng" className="mb-6">
                     <Button
                         type="primary"

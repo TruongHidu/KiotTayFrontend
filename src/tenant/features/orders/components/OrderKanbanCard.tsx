@@ -172,14 +172,18 @@ export const OrderKanbanCard = ({
                     {previewItems.map((item) => (
                         <li
                             key={item.id}
-                            className="flex justify-between gap-2 text-sm text-gray-700"
+                            className="flex justify-between items-center gap-2 text-sm text-gray-700"
                         >
-                            <span className="truncate">
+                            <span className="truncate flex-1">
                                 <span className="font-bold text-gray-900">{item.quantity}×</span>{' '}
                                 {item.item_name}
-                                {item.status === 'pending' && (
-                                    <span className="ml-1 text-[10px] text-orange-600 font-bold">• mới</span>
-                                )}
+                            </span>
+                            <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-white border border-gray-100">
+                                {item.status === 'pending' && <span className="text-orange-500">Chờ nấu</span>}
+                                {item.status === 'cooking' && <span className="text-purple-500">Đang nấu</span>}
+                                {item.status === 'ready' && <span className="text-blue-500">Đã xong</span>}
+                                {item.status === 'served' && <span className="text-emerald-600">Đã lên</span>}
+                                {item.status === 'cancelled' && <span className="text-red-500">Đã huỷ</span>}
                             </span>
                         </li>
                     ))}

@@ -12,9 +12,10 @@ import {
     message,
     Tooltip,
     Tag,
+    Popconfirm,
 } from 'antd';
-import { PlusOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons';
-import { usePackages, useTogglePackage } from '../services/package.hooks';
+import { PlusOutlined, EditOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
+import { usePackages, useTogglePackage, useDeletePackage } from '../services/package.hooks';
 import { formatDate, formatCurrency } from '@/lib/formatters';
 import { getErrorMessage } from '@/lib/error-handlers';
 import { LoadingState } from '@/lib/loading-state';
@@ -31,6 +32,7 @@ export const PackageListPage = () => {
 
     const { data, isLoading, error } = usePackages(params);
     const { mutate: togglePackage } = useTogglePackage();
+    const { mutate: deletePackage } = useDeletePackage();
 
     const packages = data?.data || [];
     const pagination = data?.meta;
@@ -45,6 +47,17 @@ export const PackageListPage = () => {
                 message.success(
                     `Gói dịch vụ đã ${record.is_active ? 'tắt' : 'bật'}`
                 );
+            },
+            onError: (error) => {
+                message.error(getErrorMessage(error));
+            },
+        });
+    };
+
+    const handleDelete = (id: string) => {
+        deletePackage(id, {
+            onSuccess: () => {
+                message.success('Xóa gói dịch vụ thành công');
             },
             onError: (error) => {
                 message.error(getErrorMessage(error));
@@ -67,18 +80,37 @@ export const PackageListPage = () => {
             render: (text: string) => <code>{text}</code>,
         },
         {
-            title: 'Giá',
+            title: 'Giá Mặc Định',
             dataIndex: 'price',
             key: 'price',
             width: 120,
             render: (price) => formatCurrency(price),
         },
         {
-            title: 'Thời Hạn',
+            title: 'Thời Hạn Gốc',
             dataIndex: 'duration_days',
             key: 'duration_days',
             width: 100,
             render: (days) => `${days} ngày`,
+        },
+        {
+            title: 'Các Mốc Giá (Prices)',
+            dataIndex: 'prices',
+            key: 'prices',
+            width: 250,
+            render: (prices: Package['prices']) => (
+                <Space size={[0, 8]} wrap>
+                    {!prices || prices.length === 0 ? (
+                        <span className="text-gray-400">Chỉ dùng giá mặc định</span>
+                    ) : (
+                        prices.map((p) => (
+                            <Tag key={p.id} color="blue">
+                                {p.duration_days} ngày: {formatCurrency(p.price)}
+                            </Tag>
+                        ))
+                    )}
+                </Space>
+            ),
         },
         {
             title: 'Tính Năng',
@@ -119,7 +151,7 @@ export const PackageListPage = () => {
             title: 'Hành Động',
             key: 'actions',
             fixed: 'right' as const,
-            width: 120,
+            width: 140,
             render: (_: unknown, record: Package) => (
                 <Space size="small">
                     <Tooltip title="Chi tiết">
@@ -138,6 +170,17 @@ export const PackageListPage = () => {
                             onClick={() => navigate(`/super-admin/packages/${record.id}/edit`)}
                         />
                     </Tooltip>
+                    <Popconfirm
+                        title="Xóa gói dịch vụ"
+                        description="Bạn có chắc chắn muốn xóa gói dịch vụ này không?"
+                        onConfirm={() => handleDelete(record.id)}
+                        okText="Xóa"
+                        cancelText="Hủy"
+                    >
+                        <Tooltip title="Xóa">
+                            <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                        </Tooltip>
+                    </Popconfirm>
                 </Space>
             ),
         },

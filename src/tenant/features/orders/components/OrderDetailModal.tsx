@@ -188,25 +188,34 @@ export const OrderDetailModal = ({ orderId, open, onClose }: Props) => {
                                         return (
                                             <div
                                                 key={item.id}
-                                                className={`flex items-start justify-between gap-3 p-3 rounded-xl border
+                                                className={`flex items-center justify-between gap-3 p-3 rounded-xl border
                                                     ${isPending ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-100'}`}
                                             >
+                                                {/* Cột 1: Tên & Ghi chú */}
                                                 <div className="min-w-0 flex-1">
                                                     <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
                                                         <span className="text-emerald-700 font-bold">{item.quantity}×</span>
-                                                        {item.item_name}
-                                                        {isPending && (
-                                                            <Tag color="orange" className="!m-0 text-[10px]">Chờ nấu</Tag>
-                                                        )}
+                                                        <span>{item.item_name}</span>
                                                         {isNew && !isPending && (
-                                                            <Tag color="blue" className="!m-0 text-[10px]">Gọi thêm</Tag>
+                                                            <Tag color="cyan" className="!m-0 text-[10px]">Gọi thêm</Tag>
                                                         )}
                                                     </div>
                                                     {item.note && (
                                                         <p className="text-xs text-gray-500 italic mt-1 mb-0">📝 {item.note}</p>
                                                     )}
                                                 </div>
-                                                <div className="text-right shrink-0">
+
+                                                {/* Cột 2: Trạng thái món */}
+                                                <div className="shrink-0 min-w-[100px] text-center">
+                                                    {item.status === 'pending' && <Tag color="orange" className="!m-0">Chờ nấu</Tag>}
+                                                    {item.status === 'cooking' && <Tag color="purple" className="!m-0">Đang nấu</Tag>}
+                                                    {item.status === 'ready' && <Tag color="blue" className="!m-0">Đã xong</Tag>}
+                                                    {item.status === 'served' && <Tag color="success" className="!m-0">Đã lên món</Tag>}
+                                                    {item.status === 'cancelled' && <Tag color="error" className="!m-0">Đã huỷ</Tag>}
+                                                </div>
+
+                                                {/* Cột 3: Giá */}
+                                                <div className="text-right shrink-0 min-w-[100px]">
                                                     <div className="font-bold text-emerald-600">{fmt(item.line_total)}</div>
                                                     <div className="text-xs text-gray-400">{fmt(item.unit_price)}/món</div>
                                                 </div>
