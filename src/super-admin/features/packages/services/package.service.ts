@@ -46,4 +46,10 @@ export const packageService = {
         apiClient
             .put<SyncPackageFeaturesResponse>(`/admin/packages/${id}/features`, data)
             .then((res) => res.data),
+
+    // Delete
+    deletePackage: (id: string) =>
+        apiClient
+            .delete(`/admin/packages/${id}`)
+            .then((res) => res.data),
 };

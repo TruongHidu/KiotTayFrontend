@@ -1,5 +1,16 @@
 import type { Feature } from './feature';
 
+export interface PackagePrice {
+    id: string;
+    package_id: string;
+    duration_days: number;
+    price: number | string;
+    original_price?: number | string | null;
+    is_active: boolean;
+    created_at?: string | null;
+    updated_at?: string | null;
+}
+
 export interface Package {
     id: string;
     code: string;
@@ -9,6 +20,7 @@ export interface Package {
     duration_days: number;
     is_active: boolean;
     features: Feature[];
+    prices?: PackagePrice[];
     created_at: string | null;
     updated_at: string | null;
 }
@@ -21,6 +33,12 @@ export interface CreatePackageRequest {
     description?: string | null;
     is_active?: boolean;
     feature_ids?: string[];
+    prices?: {
+        duration_days: number;
+        price: number;
+        original_price?: number | null;
+        is_active?: boolean;
+    }[];
 }
 
 export interface UpdatePackageRequest {
@@ -30,6 +48,14 @@ export interface UpdatePackageRequest {
     duration_days?: number;
     description?: string | null;
     is_active?: boolean;
+    feature_ids?: string[];
+    prices?: {
+        id?: string;
+        duration_days: number;
+        price: number;
+        original_price?: number | null;
+        is_active?: boolean;
+    }[];
 }
 
 export interface PackageListParams {
