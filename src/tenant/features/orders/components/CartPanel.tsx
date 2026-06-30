@@ -59,8 +59,9 @@ export const CartPanel = () => {
                     setCustomerPhone('');
                     clearCart();
                 },
-                onError: () => {
-                    message.error('Tạo đơn thất bại. Vui lòng thử lại.');
+                onError: (error: any) => {
+                    const errorMsg = error.response?.data?.message || 'Tạo đơn thất bại. Vui lòng thử lại.';
+                    message.error(errorMsg);
                 },
             }
         );
