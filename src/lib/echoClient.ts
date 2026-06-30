@@ -19,7 +19,7 @@ import Pusher from 'pusher-js';
 // ── Đọc biến môi trường Reverb ──────────────────────────────────────────────
 const REVERB_KEY    = import.meta.env.VITE_REVERB_APP_KEY ?? '';
 const REVERB_HOST   = import.meta.env.VITE_REVERB_HOST   ?? '127.0.0.1';
-const REVERB_PORT   = Number(import.meta.env.VITE_REVERB_PORT ?? 8081);
+const REVERB_PORT   = Number(import.meta.env.VITE_REVERB_PORT ?? 8080);
 const REVERB_SCHEME = import.meta.env.VITE_REVERB_SCHEME ?? 'http';
 
 // ── Tạo Echo instance ────────────────────────────────────────────────────────
@@ -30,6 +30,7 @@ const createEchoInstance = (): Echo<'pusher'> => {
     }
 
     const isTLS = REVERB_SCHEME === 'https';
+    const port = REVERB_PORT || (isTLS ? 443 : 8080);
 
     return new Echo({
         // FIX: Dùng 'pusher' làm broadcaster cho Reverb
@@ -39,8 +40,8 @@ const createEchoInstance = (): Echo<'pusher'> => {
         key:               REVERB_KEY,
         cluster:           'mt1',          // Bắt buộc có, dù Reverb không dùng
         wsHost:            REVERB_HOST,
-        wsPort:            isTLS ? 443 : REVERB_PORT,
-        wssPort:           isTLS ? REVERB_PORT : 443,
+        wsPort:            port,
+        wssPort:           port,
         forceTLS:          isTLS,
         enabledTransports: ['ws', 'wss'],
         disableStats:      true,
