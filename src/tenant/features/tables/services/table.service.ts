@@ -64,4 +64,17 @@ export const tableService = {
         apiClient
             .delete<ApiResponse<null>>(`/tenant/restaurant-tables/${id}`)
             .then((res) => res.data),
+
+    getTableQrCode: (id: string, forceRegenerate?: boolean) => {
+        const params: Record<string, string> = {};
+        if (forceRegenerate) {
+            params.force_regenerate = '1';
+        }
+        return apiClient
+            .get<ApiResponse<{ url: string; qr_code_url: string; qr_code: string }>>(
+                `/tenant/restaurant-tables/${id}/qr-code`,
+                { params }
+            )
+            .then((res) => res.data);
+    },
 };

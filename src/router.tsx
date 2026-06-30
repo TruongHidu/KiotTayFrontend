@@ -46,6 +46,7 @@ import { TableAreaPage } from '@/tenant/features/tables/pages/TableAreaPage';
 import { RestaurantTablePage } from '@/tenant/features/tables/pages/RestaurantTablePage';
 import { StaffListPage } from '@/tenant/features/staff/pages/StaffListPage';
 import { PaymentMethodSettingsPage } from '@/tenant/features/settings/pages/PaymentMethodSettingsPage';
+import { QrStaticSettingsPage } from '@/tenant/features/settings/pages/QrStaticSettingsPage';
 import { WarehousePage } from '@/tenant/features/inventory/pages/WarehousePage';
 import { InventoryDashboardPage } from '@/tenant/features/inventory/pages/InventoryDashboardPage';
 import { StockDocumentPage } from '@/tenant/features/inventory/pages/StockDocumentPage';
@@ -176,11 +177,26 @@ export const router = createBrowserRouter([
             },
             {
                 path: 'settings',
-                element: (
-                    <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
-                        <PaymentMethodSettingsPage />
-                    </RoleGuard>
-                ),
+                children: [
+                    {
+                        index: true,
+                        element: (
+                            <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                                <PaymentMethodSettingsPage />
+                            </RoleGuard>
+                        ),
+                    },
+                    {
+                        path: 'qr-static',
+                        element: (
+                            <RoleGuard allowedRoles={[UserRole.OWNER, UserRole.MANAGER]}>
+                                <FeatureGuard feature={FeatureCode.QR_STATIC_ORDER} fallback={<UnauthorizedPage />}>
+                                    <QrStaticSettingsPage />
+                                </FeatureGuard>
+                            </RoleGuard>
+                        ),
+                    },
+                ],
             },
             {
                 path: 'inventory',

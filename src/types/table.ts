@@ -51,6 +51,7 @@ export interface RestaurantTable {
     status: TableStatus;
     status_label: string;
     qr_token: string; // Internal only — NEVER display in UI
+    qr_code_url?: string | null;
     created_at: string;
     updated_at: string;
 }

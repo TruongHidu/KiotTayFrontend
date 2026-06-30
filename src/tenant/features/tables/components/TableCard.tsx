@@ -1,5 +1,5 @@
 import { Card, Tag, Button, Popconfirm, Tooltip } from 'antd';
-import { EditOutlined, DeleteOutlined, UserOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, UserOutlined, EnvironmentOutlined, QrcodeOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import type { RestaurantTable } from '@/types';
 import { TABLE_STATUS_OPTIONS } from '@/types';
@@ -8,10 +8,49 @@ interface TableCardProps {
     table: RestaurantTable;
     onEdit: (table: RestaurantTable) => void;
     onDelete: (id: string) => void;
+    onShowQr?: (table: RestaurantTable) => void;
 }
 
-export const TableCard = ({ table, onEdit, onDelete }: TableCardProps) => {
+export const TableCard = ({ table, onEdit, onDelete, onShowQr }: TableCardProps) => {
     const statusConfig = TABLE_STATUS_OPTIONS.find((s) => s.value === table.status);
+
+    const cardActions = [
+        onShowQr && (
+            <Tooltip title="Mã QR" key="qr">
+                <Button
+                    type="text"
+                    icon={<QrcodeOutlined />}
+                    onClick={() => onShowQr(table)}
+                    style={{ color: '#059669' }}
+                />
+            </Tooltip>
+        ),
+        <Tooltip title="Sửa" key="edit">
+            <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => onEdit(table)}
+                style={{ color: '#10b981' }}
+            />
+        </Tooltip>,
+        <Popconfirm
+            key="delete"
+            title="Xóa bàn"
+            description={`Xóa bàn '${table.name}' (${table.uid})? Hành động này không thể hoàn tác.`}
+            onConfirm={() => onDelete(table.id)}
+            okText="Xóa"
+            cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+        >
+            <Tooltip title="Xóa">
+                <Button
+                    type="text"
+                    icon={<DeleteOutlined />}
+                    danger
+                />
+            </Tooltip>
+        </Popconfirm>,
+    ].filter(Boolean) as React.ReactNode[];
 
     return (
         <motion.div
@@ -31,33 +70,7 @@ export const TableCard = ({ table, onEdit, onDelete }: TableCardProps) => {
                 styles={{
                     body: { padding: '20px' },
                 }}
-                actions={[
-                    <Tooltip title="Sửa" key="edit">
-                        <Button
-                            type="text"
-                            icon={<EditOutlined />}
-                            onClick={() => onEdit(table)}
-                            style={{ color: '#10b981' }}
-                        />
-                    </Tooltip>,
-                    <Popconfirm
-                        key="delete"
-                        title="Xóa bàn"
-                        description={`Xóa bàn '${table.name}' (${table.uid})? Hành động này không thể hoàn tác.`}
-                        onConfirm={() => onDelete(table.id)}
-                        okText="Xóa"
-                        cancelText="Hủy"
-                        okButtonProps={{ danger: true }}
-                    >
-                        <Tooltip title="Xóa">
-                            <Button
-                                type="text"
-                                icon={<DeleteOutlined />}
-                                danger
-                            />
-                        </Tooltip>
-                    </Popconfirm>,
-                ]}
+                actions={cardActions}
             >
                 {/* UID badge */}
                 <div style={{

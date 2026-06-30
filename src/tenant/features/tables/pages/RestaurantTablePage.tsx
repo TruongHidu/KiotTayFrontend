@@ -1,11 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Row, Col, Table, Tag, Button, Popconfirm, Empty, Pagination, Typography, Skeleton, message, Tooltip } from 'antd';
-import { EditOutlined, DeleteOutlined, UserOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, UserOutlined, EnvironmentOutlined, QrcodeOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import { TableCard } from '../components/TableCard';
 import { TableSummaryBar } from '../components/TableSummaryBar';
 import { TableFilterBar, type ViewMode } from '../components/TableFilterBar';
 import { RestaurantTableModal } from '../components/RestaurantTableModal';
+import { TableQrModal } from '../components/TableQrModal';
+import { useFeatureFlag } from '@/auth/hooks/useFeatureFlag';
 import {
     useTableAreas,
     useRestaurantTables,
@@ -14,7 +16,7 @@ import {
     useDeleteRestaurantTable,
 } from '../services/table.hooks';
 import type { RestaurantTable as RestaurantTableType, TableStatus, CreateRestaurantTableRequest, UpdateRestaurantTableRequest } from '@/types';
-import { TABLE_STATUS_OPTIONS } from '@/types';
+import { TABLE_STATUS_OPTIONS, FeatureCode } from '@/types';
 import type { AxiosError } from 'axios';
 import type { ApiErrorResponse } from '@/api/http';
 import type { ColumnsType } from 'antd/es/table';
@@ -34,6 +36,16 @@ export const RestaurantTablePage = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingTable, setEditingTable] = useState<RestaurantTableType | null>(null);
     const [serverErrors, setServerErrors] = useState<Record<string, string[]> | null>(null);
+
+    // --- QR Modal state ---
+    const hasQrTableOrder = useFeatureFlag(FeatureCode.QR_TABLE_ORDER);
+    const [qrTable, setQrTable] = useState<RestaurantTableType | null>(null);
+    const [isQrModalVisible, setIsQrModalVisible] = useState(false);
+
+    const handleShowQr = useCallback((table: RestaurantTableType) => {
+        setQrTable(table);
+        setIsQrModalVisible(true);
+    }, []);
 
     // --- Debounce search ---
     const searchTimeoutRef = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -205,10 +217,21 @@ export const RestaurantTablePage = () => {
         {
             title: 'Hành động',
             key: 'action',
-            width: 120,
+            width: 140,
             align: 'center',
             render: (_: unknown, record: RestaurantTableType) => (
                 <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                    {hasQrTableOrder && (
+                        <Tooltip title="Mã QR">
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<QrcodeOutlined />}
+                                onClick={() => handleShowQr(record)}
+                                style={{ color: '#059669' }}
+                            />
+                        </Tooltip>
+                    )}
                     <Tooltip title="Sửa">
                         <Button
                             type="text"
@@ -325,6 +348,7 @@ export const RestaurantTablePage = () => {
                                 table={table}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
+                                onShowQr={hasQrTableOrder ? handleShowQr : undefined}
                             />
                         </Col>
                     ))}
@@ -383,6 +407,13 @@ export const RestaurantTablePage = () => {
                 isLoading={createMutation.isPending || updateMutation.isPending}
                 areas={areas}
                 serverErrors={serverErrors}
+            />
+
+            {/* Table QR Modal */}
+            <TableQrModal
+                visible={isQrModalVisible}
+                table={qrTable}
+                onClose={() => setIsQrModalVisible(false)}
             />
         </div>
     );

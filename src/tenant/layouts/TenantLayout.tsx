@@ -58,6 +58,7 @@ export const TenantLayout = () => {
     const hasStaffManagement = useFeatureFlag(FeatureCode.STAFF_MANAGEMENT);
     const hasPosQuickOrder = useFeatureFlag(FeatureCode.POS_QUICK_ORDER);
     const hasInventoryManagement = useFeatureFlag(FeatureCode.INVENTORY_MANAGEMENT);
+    const hasQrStaticOrder = useFeatureFlag(FeatureCode.QR_STATIC_ORDER);
 
     const userRole = user?.role as UserRole;
     const isOwner = userRole === UserRole.OWNER;
@@ -170,7 +171,12 @@ export const TenantLayout = () => {
                     label: 'Cấu hình thanh toán',
                     onClick: () => navigate('/portal/settings'),
                 },
-            ],
+                hasQrStaticOrder ? {
+                    key: '/portal/settings/qr-static',
+                    label: 'QR Menu Tĩnh',
+                    onClick: () => navigate('/portal/settings/qr-static'),
+                } : null,
+            ].filter(Boolean) as MenuProps['items'],
         } : null,
     ].filter(Boolean) as MenuProps['items'];
 

@@ -88,3 +88,21 @@ export const useDeleteRestaurantTable = () => {
         },
     });
 };
+
+export const useTableQrCode = (tableId: string | null) => {
+    return useQuery({
+        queryKey: ['tableQrCode', tableId],
+        queryFn: () => tableService.getTableQrCode(tableId!),
+        enabled: !!tableId,
+    });
+};
+
+export const useRegenerateTableQrCode = (tableId: string | null) => {
+    return useMutation({
+        mutationFn: () => tableService.getTableQrCode(tableId!, true),
+        onSuccess: (data) => {
+            queryClient.setQueryData(['tableQrCode', tableId], data);
+            queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.restaurantTables] });
+        },
+    });
+};
