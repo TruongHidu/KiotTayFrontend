@@ -256,8 +256,9 @@ export const AddItemsDrawer = ({ open, orderId, orderCode, onClose }: Props) => 
                     setCart([]);
                     onClose();
                 },
-                onError: () => {
-                    message.error('Không thể gọi thêm món. Vui lòng thử lại.');
+                onError: (error: any) => {
+                    const errorMsg = error.response?.data?.message || 'Không thể gọi thêm món. Vui lòng thử lại.';
+                    message.error(errorMsg);
                 },
             }
         );

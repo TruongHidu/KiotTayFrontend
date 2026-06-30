@@ -169,9 +169,10 @@ export const MenuPage = () => {
             clearCart();
             setCartOpen(false);
             navigate(`/menu/order-tracking/${orderId}?public_token=${public_token}&type=${qrType}`);
-        } catch (err) {
+        } catch (err: any) {
             console.error('[MenuPage] Lỗi đặt đơn:', err);
-            alert('Không thể gửi đơn. Vui lòng thử lại.');
+            const errorMsg = err.response?.data?.message || 'Không thể gửi đơn. Vui lòng thử lại.';
+            alert(errorMsg);
         } finally {
             setIsPlacingOrder(false);
         }
